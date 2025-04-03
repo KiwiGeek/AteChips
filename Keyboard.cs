@@ -8,7 +8,7 @@ public class Keyboard : Hardware, IResettable, IKeyboard
 
     private KeyboardState _prevKeyboardState;
 
-    public void Update(GameTime gameTime)
+    public void Update()
     {
         KeyboardState keyboard = Microsoft.Xna.Framework.Input.Keyboard.GetState();
         // Check for a fresh Alt+Enter press

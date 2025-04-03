@@ -19,7 +19,6 @@ public class Display : VisualizableHardware
     private RenderTarget2D _scaledRenderTarget = null!;
     private ImGuiController _imGuiController = null!;
     private GraphicsDevice _graphics = null!;
-   //private Game? _game;
     private readonly FrameBuffer _frameBuffer;
 
 

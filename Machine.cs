@@ -22,8 +22,8 @@ public class Machine
         _frameBuffer = Register<FrameBuffer>();
         _display = Register(_ => new Display(_frameBuffer));
         _ram = Register<Ram>();
-        _cpu = Register<Cpu>();
         _keyboard = Register<Keyboard>();
+        _cpu = Register(_ => new Cpu(_frameBuffer, _keyboard, _ram));
         Reset();
     }
 

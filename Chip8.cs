@@ -1,5 +1,6 @@
 ﻿using System;
 using Microsoft.Xna.Framework;
+using static AteChips.Cpu;
 
 namespace AteChips;
 public class Chip8 : Game
@@ -19,7 +20,6 @@ public class Chip8 : Game
         _frameBuffer = _machine.Get<FrameBuffer>();
         _display = _machine.Get<Display>();
         _ram = _machine.Get<Ram>();
-        //_machine.Chip8 = this;
     }
 
     public void LoadRom(string filePath) => _ram.LoadRom(filePath);
@@ -30,7 +30,26 @@ public class Chip8 : Game
     // Update the game state
     protected override void Update(GameTime gameTime)
     {
-        _keyboard.Update(gameTime);
+
+        //switch (ExecutionState)
+        //{
+        //    case CpuExecutionState.Running:
+        //        ExecuteNextInstruction();
+        //        break;
+
+        //    case CpuExecutionState.Stepping:
+        //        ExecuteNextInstruction();
+        //        ExecutionState = CpuExecutionState.Paused;
+        //        break;
+
+        //    case CpuExecutionState.Paused:
+        //        // Do nothing
+        //        break;
+        //}
+
+
+
+        _keyboard.Update();
 
         Random r = new();
         _frameBuffer.TogglePixel(r.Next(64), r.Next(32));
