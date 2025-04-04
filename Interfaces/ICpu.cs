@@ -1,6 +1,6 @@
 ﻿namespace AteChips.Interfaces;
 
-public interface ICpu
+public interface ICpu : IUpdatable, IResettable, IVisualizable
 {
     
 }

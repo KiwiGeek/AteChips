@@ -6,10 +6,11 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
 using AteChips.EffectSettings;
+using IDrawable = AteChips.Interfaces.IDrawable;
 
 namespace AteChips;
 
-public partial class Display : VisualizableHardware
+public partial class Display : VisualizableHardware, IDrawable
 {
     private SpriteBatch _spriteBatch = null!;
     private RenderTarget2D _chip8RenderTarget = null!;

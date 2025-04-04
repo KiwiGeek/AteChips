@@ -19,10 +19,15 @@ public class FrameBuffer : Hardware, IResettable
         set => Pixels[(y * Width) + x] = value ? Color.White : Color.Black;
     }
 
-    //public void SetPixel(int x, int y, bool on) => this[x, y] = on;
-    public void TogglePixel(int x, int y) => this[x, y] = !this[x, y];
-    //public void ClearPixel(int x, int y) => this[x, y] = false;
-    //public void AssertPixel(int x, int y) => this[x, y] = true;
+    public void ClearPixel(int x, int y) => this[x, y] = false;
+    public void AssertPixel(int x, int y) => this[x, y] = true;
+    public void TogglePixel(int x, int y) => this[x, y] ^= true;
+    public bool TogglePixel(int x, int y, out bool wasErased)
+    {
+        TogglePixel(x,y);
+        wasErased = !this[x, y];
+        return wasErased;
+    }
 
     public void Reset() => Array.Fill(Pixels, Color.Black);
 

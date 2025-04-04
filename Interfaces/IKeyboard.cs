@@ -1,6 +1,6 @@
 ﻿namespace AteChips.Interfaces;
 
-public interface IKeyboard
+public interface IKeyboard : IUpdatable
 {
     
 }

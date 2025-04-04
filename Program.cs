@@ -1,6 +1,6 @@
 ﻿using AteChips;
 
-using Chip8 game = new (Machine.Instance);
-MonoGameManager.Initialize(game);
+using Chip8 chip8 = new (Machine.Instance);
+MonoGameManager.Initialize(chip8);
 
-game.Run();
+chip8.Run();

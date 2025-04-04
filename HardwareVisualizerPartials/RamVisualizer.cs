@@ -5,8 +5,24 @@ namespace AteChips;
 public partial class Ram
 {
 
+    private bool firstOpen = true;
+
     public override void RenderVisual()
     {
+
+        if (firstOpen)
+        {
+            ImGuiViewportPtr viewport = ImGui.GetMainViewport();
+            Vector2 workPos = viewport.WorkPos;
+            Vector2 workSize = viewport.WorkSize;
+
+            Vector2 windowSize = new (550, 540);
+            Vector2 topRightPos = new (workPos.X + workSize.X - windowSize.X - 7, workPos.Y + 45 + 10 + 446);
+
+            ImGui.SetNextWindowPos(topRightPos, ImGuiCond.FirstUseEver);
+            ImGui.SetNextWindowSize(windowSize, ImGuiCond.FirstUseEver);
+        }
+
         _cpu ??= Machine.Instance.Get<Cpu>();
 
         ImGui.Begin("Ram", ImGuiWindowFlags.NoSavedSettings);
@@ -77,6 +93,12 @@ public partial class Ram
             }
 
             ImGui.NewLine();
+        }
+
+        if (firstOpen)
+        {
+            firstOpen ^= true;
+            ImGui.SetScrollY(500);
         }
 
         ImGui.End();

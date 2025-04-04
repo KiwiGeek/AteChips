@@ -1,4 +1,5 @@
-﻿using AteChips.Interfaces;
+﻿using System;
+using AteChips.Interfaces;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
 
@@ -8,7 +9,7 @@ public class Keyboard : Hardware, IResettable, IKeyboard
 
     private KeyboardState _prevKeyboardState;
 
-    public void Update()
+    public void Update(GameTime gameTime)
     {
         KeyboardState keyboard = Microsoft.Xna.Framework.Input.Keyboard.GetState();
         // Check for a fresh Alt+Enter press
@@ -28,8 +29,16 @@ public class Keyboard : Hardware, IResettable, IKeyboard
             Settings.ShowImGui = !Settings.ShowImGui;
         }
 
+        if (keyboard.IsKeyDown(Keys.Escape))
+        {
+            Environment.Exit(0);
+        }
+
         // Save current state for next frame
         _prevKeyboardState = keyboard;
+
+        // todo: Actually implement the Chip8 keybpad
+        // todo: split _keyboard_ and _chip8_keyboard_ into two classes
 
     }
 
@@ -37,4 +46,7 @@ public class Keyboard : Hardware, IResettable, IKeyboard
     {
         
     }
+
+
+    public byte UpdatePriority => 0;
 }

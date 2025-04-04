@@ -4,7 +4,7 @@ using AteChips.Interfaces;
 using ImGuiNET;
 
 namespace AteChips;
-public partial class Ram : VisualizableHardware, IResettable, IRam
+public partial class Ram : VisualizableHardware, IRam
 {
     public const int FontStartAddress = 0x50;
     private static readonly byte[] FONT_DATA =

@@ -15,9 +15,26 @@ public partial class Cpu
     private readonly Vector4 GREEN = new(0f, 1f, 0f, 1f);
     private readonly Vector4 RED = new(1f, 0f, 0f, 1f);
 
+    private bool firstOpen = true;
+
     public override void RenderVisual()
     {
-        ImGui.Begin("CPU State");
+
+        if (firstOpen)
+        {
+            firstOpen ^= true;
+            ImGuiViewportPtr viewport = ImGui.GetMainViewport();
+            Vector2 workPos = viewport.WorkPos;
+            Vector2 workSize = viewport.WorkSize;
+
+            Vector2 windowSize = new (350, 446);
+            Vector2 topRightPos = new (workPos.X + workSize.X - windowSize.X-7, workPos.Y+45);
+
+            ImGui.SetNextWindowPos(topRightPos, ImGuiCond.FirstUseEver);
+            ImGui.SetNextWindowSize(windowSize, ImGuiCond.FirstUseEver);
+        }
+
+        ImGui.Begin("CPU State", ImGuiWindowFlags.NoSavedSettings);
         ImGui.Text("General Purpose Registers:");
         for (int i = 0; i < Registers.Length; i++)
         {

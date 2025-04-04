@@ -1,6 +1,7 @@
 ﻿using System;
 using Microsoft.Xna.Framework;
-using static AteChips.Cpu;
+using AteChips.Interfaces;
+using IDrawable = AteChips.Interfaces.IDrawable;
 
 namespace AteChips;
 public class Chip8 : Game
@@ -12,6 +13,9 @@ public class Chip8 : Game
     private readonly FrameBuffer _frameBuffer;
     private readonly Display _display;
     private readonly Ram _ram;
+    private readonly Cpu _cpu;
+
+    private bool firstTimeDebug = true;
 
     public Chip8(Machine machine)
     {
@@ -20,6 +24,8 @@ public class Chip8 : Game
         _frameBuffer = _machine.Get<FrameBuffer>();
         _display = _machine.Get<Display>();
         _ram = _machine.Get<Ram>();
+        _cpu = _machine.Get<Cpu>();
+
     }
 
     public void LoadRom(string filePath) => _ram.LoadRom(filePath);
@@ -31,34 +37,64 @@ public class Chip8 : Game
     protected override void Update(GameTime gameTime)
     {
 
-        //switch (ExecutionState)
-        //{
-        //    case CpuExecutionState.Running:
-        //        ExecuteNextInstruction();
-        //        break;
+        if (firstTimeDebug)
+        {
+            firstTimeDebug ^= true;
+            // load the rom, and pause the CPU
+            _cpu.Reset();
+            _cpu.Pause();
+            
+            // maximize the window
+            MonoGameManager.ToggleFullScreen();
 
-        //    case CpuExecutionState.Stepping:
-        //        ExecuteNextInstruction();
-        //        ExecutionState = CpuExecutionState.Paused;
-        //        break;
+            // show the ImGui windows we care about
+            Settings.ShowImGui = true;
+            _cpu.VisualShown = true;
+            _ram.VisualShown = true;
+        }
 
-        //    case CpuExecutionState.Paused:
-        //        // Do nothing
-        //        break;
-        //}
+        // a frame has occured; we want to now emulate the next machine cycle.
+        // todo: ExecutationState should be in the emulator settings, not the CPU.
+        switch (_cpu.ExecutionState)
+        {
+            case Cpu.CpuExecutionState.Running:
+                NextMachineCycle(gameTime);
+                break;
 
+            case Cpu.CpuExecutionState.Stepping:
+                NextMachineCycle(gameTime);
+                _cpu.Pause();
+                break;
 
+            case Cpu.CpuExecutionState.Paused:
+                // Do nothing
+                break;
+        }
 
-        _keyboard.Update();
+        /*Random r = new();
+        _frameBuffer.TogglePixel(r.Next(0, 64), r.Next(0, 32));*/
 
-        Random r = new();
-        _frameBuffer.TogglePixel(r.Next(64), r.Next(32));
+    }
+
+    private void NextMachineCycle(GameTime gameTime)
+    {
+        // the updatables list is already sorted by priority, so we can just
+        // iterate through it and call each one.
+        foreach (IUpdatable updatable in _machine.Updatables)
+        {
+            updatable.Update(gameTime);
+        }
     }
 
     // Draw the game state
     protected override void Draw(GameTime gameTime)
     {
-        _display.Draw(gameTime);
+
+        // get all the drawables - in the chip8, this is just the display
+        foreach (IDrawable drawable in _machine.Drawables)
+        {
+            drawable.Draw(gameTime);
+        }
     }
 
 }

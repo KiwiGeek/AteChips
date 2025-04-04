@@ -7,15 +7,21 @@ namespace AteChips;
 public class Machine
 {
     private readonly List<IHardware> _devices = [];
-    
+
+    // todo: Cache these, and only refresh when the device changes
+
     // ReSharper disable once UnusedMember.Global
     public IReadOnlyList<Hardware> Devices => [.. _devices.Cast<Hardware>()];
 
     public IReadOnlyList<IVisualizable> Visualizables => 
         [.. _devices.OfType<IVisualizable>().OrderBy(visual => visual.GetType().Name)];
 
-    public IReadOnlyList<IResettable> Resettables =>
-           [.. _devices.OfType<IResettable>()];
+    public IReadOnlyList<IResettable> Resettables => [.. _devices.OfType<IResettable>()];
+
+    public IReadOnlyList<IUpdatable> Updatables => [.. _devices.OfType<IUpdatable>().OrderBy(f=> f.UpdatePriority)];
+
+    public IReadOnlyList<IDrawable> Drawables => [.. _devices.OfType<IDrawable>()];
+
 
     private Machine()
     {
