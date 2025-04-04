@@ -7,12 +7,26 @@ namespace AteChips;
 public partial class Cpu : VisualizableHardware, ICpu
 {
 
+    // todo: adjustable hertz
+    // todo: quirks mode
+
+    private double _cpuAccumulator = 0;
+    private double _timerAccumulator = 0;
+
+    // frequencies (in Hz)
+    private const double CPU_HZ = 1400;
+    private const double TIMER_HZ = 60;
+
     public enum CpuExecutionState
     {
         Running,
         Paused,
         Stepping
     }
+
+    private bool _waitingForKey = false;
+    private byte _waitingRegister = 0;
+    private byte? _pressedKey = null; // track which key was pressed
 
     // CPU registers
     public byte[] Registers { get; private set; } = null!;
@@ -99,8 +113,62 @@ public partial class Cpu : VisualizableHardware, ICpu
 
     public void Update(GameTime gameTime)
     {
-        // We're here.
-        // fetch, decode, execute
+
+        double elapsed = gameTime.ElapsedGameTime.TotalSeconds;
+
+        _cpuAccumulator += elapsed;
+        _timerAccumulator += elapsed;
+
+        double cpuStep = 1.0 / CPU_HZ;
+        double timerStep = 1.0 / TIMER_HZ;
+
+        // Run CPU steps as often as needed
+        while (_cpuAccumulator >= cpuStep)
+        {
+            Tick();
+            _cpuAccumulator -= cpuStep;
+        }
+
+        while (_timerAccumulator >= timerStep)
+        {
+            if (DelayTimer > 0) { DelayTimer -= 1; }
+            if (SoundTimer > 0) { DelayTimer -= 1; }
+            // todo: trigger a sound on soundtimer = 0
+            _timerAccumulator -= timerStep;
+        }
+
+    }
+
+    void Tick()
+    {
+
+        if (_waitingForKey)
+        {
+            // Step 1: Look for new key press
+            if (_pressedKey is null)
+            {
+                for (byte i = 0; i < 16; i++)
+                {
+                    if (_keyboard.Keypad[i] == Keyboard.KeyState.Pressed)
+                    {
+                        _pressedKey = i;
+                        Registers[_waitingRegister] = i;
+                        break;
+                    }
+                }
+
+                return; // still waiting, don’t execute anything else
+            }
+
+            // Step 2: Wait for that specific key to be released
+            if (_keyboard.Keypad[_pressedKey.Value] == Keyboard.KeyState.Up)
+            {
+                _waitingForKey = false;
+                _pressedKey = null;
+            }
+
+            return; // still waiting
+        }
 
         ushort instruction = Fetch();
         Action command = Decode(instruction);
@@ -138,17 +206,17 @@ public partial class Cpu : VisualizableHardware, ICpu
         if ((instruction & 0xF00F) == 0x800E) { return ShiftLeft(instruction); }
         if ((instruction & 0xF000) == 0x9000) { return SkipRegistersNotEqual((ushort)(instruction & 0x0FFF)); }
         if ((instruction & 0xF000) == 0xA000) { return LoadIndex((ushort)(instruction & 0x0FFF)); }
-        if ((instruction & 0xF000) == 0xB000) { throw new NotImplementedException("JP V0, addr"); }
-        if ((instruction & 0xF000) == 0xC000) { throw new NotImplementedException("RND Vx, byte"); }
+        if ((instruction & 0xF000) == 0xB000) { return JumpRegisterRelative(instruction); }
+        if ((instruction & 0xF000) == 0xC000) { return RandomByte(instruction); }
         if ((instruction & 0xF000) == 0xD000) { return Draw(instruction); }
-        if ((instruction & 0xF0FF) == 0xE09E) { throw new NotImplementedException("SKP Vx"); }
-        if ((instruction & 0xF0FF) == 0xE09E) { throw new NotImplementedException("SKNP Vx"); }
-        if ((instruction & 0xF0FF) == 0xF007) { throw new NotImplementedException("LD Vx, DT"); }
-        if ((instruction & 0xF0FF) == 0xF00A) { throw new NotImplementedException("LD Vx, K"); }
-        if ((instruction & 0xF0FF) == 0xF015) { throw new NotImplementedException("LD DT, Vx"); }
+        if ((instruction & 0xF0FF) == 0xE09E) { return SkipOnKeypadPressed(instruction); }
+        if ((instruction & 0xF0FF) == 0xE0A1) { return SkipOnKeypadNotPressed(instruction); }
+        if ((instruction & 0xF0FF) == 0xF007) { return LoadRegisterFromDelayTimer(instruction); }
+        if ((instruction & 0xF0FF) == 0xF00A) { return WaitForKeypress(instruction); }
+        if ((instruction & 0xF0FF) == 0xF015) { return LoadDelayTimer(instruction); }
         if ((instruction & 0xF0FF) == 0xF018) { throw new NotImplementedException("LD ST, Vx"); }
         if ((instruction & 0xF0FF) == 0xF01E) { return AddRegisterToIndex(instruction); }
-        if ((instruction & 0xF0FF) == 0xF029) { throw new NotImplementedException("LD F, Vx"); }
+        if ((instruction & 0xF0FF) == 0xF029) { return IndexToFontSprite(instruction); }
         if ((instruction & 0xF0FF) == 0xF033) { return BinaryCodedDecimal(instruction); }
         if ((instruction & 0xF0FF) == 0xF055) { return StoreMultipleRegisters(instruction); }
         if ((instruction & 0xF0FF) == 0xF065) { return LoadMultipleRegisters(instruction); }
@@ -191,6 +259,8 @@ public partial class Cpu : VisualizableHardware, ICpu
                     // skip the pixel if it is not set
                     if ((spriteByte & (0x80 >> col)) == 0) { continue; }
 
+                    if (vx + col >= _frameBuffer.Width) { continue; }
+                    if (vy + row >= _frameBuffer.Height) { continue; }
                     Registers[0xF] |= (byte)(_frameBuffer.TogglePixel(vx + col, vy + row, out bool _) ? 1 : 0);
                 }
             }
@@ -384,6 +454,69 @@ public partial class Cpu : VisualizableHardware, ICpu
         // add the register to the index
         byte register = (byte)((instruction & 0x0F00) >> 8);
         IndexRegister += Registers[register];
+    };
+
+    Action LoadDelayTimer(ushort instruction) => () =>
+    {
+        byte register = (byte)((instruction & 0x0F00) >> 8);
+        DelayTimer = Registers[register];
+    };
+
+    Action LoadRegisterFromDelayTimer(ushort instruction) => () =>
+    {
+        byte register = (byte)((instruction & 0x0F00) >> 8);
+        Registers[register] = DelayTimer;
+    };
+
+    Action SkipOnKeypadPressed(ushort instruction) => () =>
+    {
+        // skip the next instruction if the key is pressed
+        byte register = (byte)((instruction & 0x0F00) >> 8);
+        if (_keyboard.Keypad[Registers[register]] is Keyboard.KeyState.Down or Keyboard.KeyState.Pressed)
+        {
+            ProgramCounter += 2;
+        }
+    };
+
+    Action SkipOnKeypadNotPressed(ushort instruction) => () =>
+    {
+        // skip the next instruction if the key is not pressed
+        byte register = (byte)((instruction & 0x0F00) >> 8);
+        if (_keyboard.Keypad[Registers[register]] is Keyboard.KeyState.Up or Keyboard.KeyState.Released)
+        {
+            ProgramCounter += 2;
+        }
+    };
+
+    Action WaitForKeypress(ushort instruction) => () =>
+    {
+        byte x = (byte)((instruction & 0x0F00) >> 8);
+
+        _waitingForKey = true;
+        _waitingRegister = x;
+    };
+
+    Action JumpRegisterRelative(ushort instruction) => () =>
+    {
+        // jump to the address + the value of the register
+        ushort address = (ushort)(instruction & 0x0FFF);
+        ProgramCounter = (ushort)(address + Registers[0]);
+    };
+
+    Action RandomByte(ushort instruction) => () =>
+    {
+        // generate a random byte and AND it with the value
+        byte register = (byte)((instruction & 0x0F00) >> 8);
+        byte value = (byte)(instruction & 0x00FF);
+        Random random = new Random();
+        Registers[register] = (byte)(random.Next(0, 256) & value);
+    };
+
+    Action IndexToFontSprite(ushort instruction) => () =>
+    {
+        // set the index to the font sprite
+        byte register = (byte)((instruction & 0x0F00) >> 8);
+        IndexRegister = (ushort)(Ram.FontStartAddress + Registers[register] * 5);
     };
 }
 

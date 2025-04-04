@@ -71,9 +71,6 @@ public class Chip8 : Game
                 break;
         }
 
-        /*Random r = new();
-        _frameBuffer.TogglePixel(r.Next(0, 64), r.Next(0, 32));*/
-
     }
 
     private void NextMachineCycle(GameTime gameTime)

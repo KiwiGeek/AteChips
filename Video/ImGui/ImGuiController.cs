@@ -55,6 +55,14 @@ public class ImGuiController
         }
         ImGuiNET.ImGui.SameLine();
 
+        if (ImGuiNET.ImGui.Button("Reboot"))
+        {
+            Machine.Instance.Get<Cpu>().Reset();
+            
+        }
+
+        ImGuiNET.ImGui.SameLine();
+
         if (ImGuiNET.ImGui.Button("Open ROM"))
         {
             _fileBrowser.Open();
