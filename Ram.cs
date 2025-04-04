@@ -1,11 +1,10 @@
 ﻿using System;
 using System.Numerics;
-using System.Runtime.CompilerServices;
 using AteChips.Interfaces;
 using ImGuiNET;
 
 namespace AteChips;
-public class Ram : VisualizableHardware, IResettable, IRam
+public partial class Ram : VisualizableHardware, IResettable, IRam
 {
     public const int FontStartAddress = 0x50;
     private static readonly byte[] FONT_DATA =
@@ -28,6 +27,16 @@ public class Ram : VisualizableHardware, IResettable, IRam
         0xF0, 0x80, 0xF0, 0x80, 0x80  // F
     ];
 
+    public const ushort STACK_POINTER_ADDR = 0x1FB;
+    public const ushort PROGRAM_COUNTER_ADDR = 0x1FC;
+    public const ushort PROGRAM_COUNTER_UPPER_ADDR = PROGRAM_COUNTER_ADDR;
+    public const ushort PROGRAM_COUNTER_LOWER_ADDR = PROGRAM_COUNTER_ADDR + 1;
+    public const ushort INDEX_REGISTER_ADDR = 0x1FE;
+    public const ushort INDEX_REGISTER_UPPER_ADDR = INDEX_REGISTER_ADDR;
+    public const ushort INDEX_REGISTER_LOWER_ADDR = INDEX_REGISTER_ADDR + 1;
+    public const ushort DELAY_TIMER_ADDR = 0x01FA;
+    public const ushort SOUND_TIMER_ADDR = 0x01F9;
+
     private Cpu? _cpu;
 
     public byte[] Memory { get; } = new byte[4096];
@@ -47,74 +56,16 @@ public class Ram : VisualizableHardware, IResettable, IRam
         Reset();
     }
 
-    public override void RenderVisual()
+    public ushort GetUInt16(ushort address) => (ushort)((ushort)(Memory[address] << 8) + Memory[address + 1]);
+    public void SetUInt16(ushort address, ushort value)
     {
-        _cpu ??= Machine.Instance.Get<Cpu>();
-
-        ImGui.Begin("Ram", ImGuiWindowFlags.NoSavedSettings);
-
-        const int BYTES_PER_ROW = 16;
-
-        for (int address = 0; address < Memory.Length; address += BYTES_PER_ROW)
-        {
-            // Print address
-            ImGui.Text($"0x{address:X4}: ");
-
-            ImGui.SameLine();
-
-            // Print hex values
-            for (int i = 0; i < BYTES_PER_ROW; i++)
-            {
-                if (address + i < Memory.Length)
-                {
-                    ImGui.SameLine();
-                    Vector4 color = new Vector4(0.8f, 0.8f, 0.8f, 1f);
-
-                    if (address + i >= _cpu.ProgramCounter && address + i < _cpu.ProgramCounter + 2)
-                    {
-                        color = new Vector4(1f, 1f, 0f, 1f);
-                    }
-
-                    if (address + i == 0x1FC || address + i == 0x1FD)
-                    {
-                        color = new Vector4(0.3f, 0.3f, 1f, 1f);
-                    }
-                    if (address + i == 0x1FE || address + i == 0x1FF)
-                    {
-                        color = new Vector4(1f, 0f, 1f, 1f);
-                    }
-
-                    if (address + i == 0x1FB)
-                    {
-                        color = new Vector4(0f, 1f, 1f, 1f);
-                    }
-
-                    if (address + i >= _cpu.StackPointer && address + i < _cpu.StackPointer + 2)
-                    {
-                        color = new Vector4(0f, 1f, 1f, 1f);
-                    }
-
-                    if (address + i == 0x1FA)
-                    {
-                        color = new Vector4(0f, 1f, 0f, 1f);
-                    }
-
-                    if (address + i == 0x1F9)
-                    {
-                        color = new Vector4(1f, 0f, 0f, 1f);
-                    }
-
-                    ImGui.TextColored(color,
-                        $"{Memory[address + i]:X2} ");
-                    ImGui.SameLine();
-                }
-            }
-
-            ImGui.NewLine();
-        }
-
-        ImGui.End();
+        Memory[address] = (byte)(value >> 8);
+        Memory[address + 1] = (byte)(value & 0x00FF);
     }
+
+    public byte GetByte(ushort address) => Memory[address];
+    public void SetByte(ushort address, byte value) => Memory[address] = value;
+
 
     public void Reset()
     {
