@@ -117,11 +117,9 @@ public partial class Cpu : VisualizableHardware, ICpu
 
     private Action Decode(ushort instruction)
     {
-        // decode the instruction
-        // this is a stub, we will implement this later
-
         if (instruction == 0x00E0) { return ClearDisplay(); }
         if (instruction == 0x00EE) { return Return(); }
+        if ((instruction & 0xF000) == 0x0000) { return System(); }
         if ((instruction & 0xF000) == 0x1000) { return Jump((ushort)(instruction & 0x0FFF)); }
         if ((instruction & 0xF000) == 0x2000) { return Call((ushort)(instruction & 0x0FFF)); }
         if ((instruction & 0xF000) == 0x3000) { return SkipEqual(instruction); }
@@ -129,40 +127,32 @@ public partial class Cpu : VisualizableHardware, ICpu
         if ((instruction & 0xF000) == 0x5000) { return SkipRegistersEqual(instruction); }
         if ((instruction & 0xF000) == 0x6000) { return LoadRegister((byte)((instruction & 0x0F00) >> 8), (byte)(instruction & 0x00FF)); }
         if ((instruction & 0xF000) == 0x7000) { return AddImmediate(instruction); }
-        if ((instruction & 0xF000) == 0x8000)
-        {
-           // these are all the register arithmetic operations.
-           if ((instruction & 0xF00F) == 0x8000) { return LoadRegisterFromRegister(instruction); }
-           if ((instruction & 0xF00F) == 0x8001) { return Or(instruction); }
-           if ((instruction & 0xF00F) == 0x8002) { return And(instruction); }
-           if ((instruction & 0xF00F) == 0x8003) { return Xor(instruction); }
-           if ((instruction & 0xF00F) == 0x8004) { return Add(instruction); }
-           if ((instruction & 0xF00F) == 0x8005) { return Sub(instruction); }
-           if ((instruction & 0xF00F) == 0x8006) { return ShiftRight(instruction); }
-           if ((instruction & 0xF00F) == 0x8007) { return SubNoBorrow(instruction); }
-           if ((instruction & 0xF00F) == 0x800E) { return ShiftLeft(instruction); }
-        }
+        if ((instruction & 0xF00F) == 0x8000) { return LoadRegisterFromRegister(instruction); }
+        if ((instruction & 0xF00F) == 0x8001) { return Or(instruction); }
+        if ((instruction & 0xF00F) == 0x8002) { return And(instruction); }
+        if ((instruction & 0xF00F) == 0x8003) { return Xor(instruction); }
+        if ((instruction & 0xF00F) == 0x8004) { return Add(instruction); }
+        if ((instruction & 0xF00F) == 0x8005) { return Sub(instruction); }
+        if ((instruction & 0xF00F) == 0x8006) { return ShiftRight(instruction); }
+        if ((instruction & 0xF00F) == 0x8007) { return SubNoBorrow(instruction); }
+        if ((instruction & 0xF00F) == 0x800E) { return ShiftLeft(instruction); }
         if ((instruction & 0xF000) == 0x9000) { return SkipRegistersNotEqual((ushort)(instruction & 0x0FFF)); }
         if ((instruction & 0xF000) == 0xA000) { return LoadIndex((ushort)(instruction & 0x0FFF)); }
+        if ((instruction & 0xF000) == 0xB000) { throw new NotImplementedException("JP V0, addr"); }
+        if ((instruction & 0xF000) == 0xC000) { throw new NotImplementedException("RND Vx, byte"); }
         if ((instruction & 0xF000) == 0xD000) { return Draw(instruction); }
+        if ((instruction & 0xF0FF) == 0xE09E) { throw new NotImplementedException("SKP Vx"); }
+        if ((instruction & 0xF0FF) == 0xE09E) { throw new NotImplementedException("SKNP Vx"); }
+        if ((instruction & 0xF0FF) == 0xF007) { throw new NotImplementedException("LD Vx, DT"); }
+        if ((instruction & 0xF0FF) == 0xF00A) { throw new NotImplementedException("LD Vx, K"); }
+        if ((instruction & 0xF0FF) == 0xF015) { throw new NotImplementedException("LD DT, Vx"); }
+        if ((instruction & 0xF0FF) == 0xF018) { throw new NotImplementedException("LD ST, Vx"); }
+        if ((instruction & 0xF0FF) == 0xF01E) { return AddRegisterToIndex(instruction); }
+        if ((instruction & 0xF0FF) == 0xF029) { throw new NotImplementedException("LD F, Vx"); }
+        if ((instruction & 0xF0FF) == 0xF033) { return BinaryCodedDecimal(instruction); }
+        if ((instruction & 0xF0FF) == 0xF055) { return StoreMultipleRegisters(instruction); }
+        if ((instruction & 0xF0FF) == 0xF065) { return LoadMultipleRegisters(instruction); }
 
-        if ((instruction & 0xF000) == 0xF000)
-        {
-            // these are the complicated instructions
-            if ((instruction & 0xF0FF) == 0xF033) { return BinaryCodedDecimal(instruction); }
-            if ((instruction & 0xF0FF) == 0xF055) { return StoreMultipleRegisters(instruction); }
-            if ((instruction & 0xF0FF) == 0xF065) { return LoadMultipleRegisters(instruction); }
-            if ((instruction & 0xF0FF) == 0xF01E) { return AddRegisterToIndex(instruction); }
-        }
-        if ((instruction & 0xF000) == 0x0000) { return System(); }
-
-        //F165
-
-        //return () =>
-        //{
-        //    // this is a stub, we will implement this later
-        //    Debug.WriteLine($"Unknown instruction: {instruction:X4}");
-        //};
         throw new NotImplementedException($"Instruction {instruction:X4} not implemented.");
     }
 
@@ -199,7 +189,7 @@ public partial class Cpu : VisualizableHardware, ICpu
                 for (int col = 0; col < 8; col++)
                 {
                     // skip the pixel if it is not set
-                    if ((spriteByte & (0x80 >> col)) == 0){ continue; }
+                    if ((spriteByte & (0x80 >> col)) == 0) { continue; }
 
                     Registers[0xF] |= (byte)(_frameBuffer.TogglePixel(vx + col, vy + row, out bool _) ? 1 : 0);
                 }
