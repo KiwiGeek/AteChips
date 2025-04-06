@@ -56,7 +56,7 @@ public partial class Ram : VisualizableHardware, IRam
         Reset();
     }
 
-    public ushort GetUInt16(ushort address) => (ushort)((ushort)(Memory[address] << 8) + Memory[address + 1]);
+    public ushort GetUInt16(ushort address) => (ushort)((ushort)(Memory[address % 4096] << 8) + Memory[(address + 1) % 4096]);
     public void SetUInt16(ushort address, ushort value)
     {
         Memory[address] = (byte)(value >> 8);
@@ -65,7 +65,7 @@ public partial class Ram : VisualizableHardware, IRam
 
     public byte GetByte(ushort address) => Memory[address];
     public void SetByte(ushort address, byte value) => Memory[address] = value;
-
+    public ref byte GetByteRef(ushort address) => ref Memory[address];
 
     public void Reset()
     {

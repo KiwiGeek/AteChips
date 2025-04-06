@@ -1,6 +1,7 @@
 ﻿using System;
 using AteChips.Interfaces;
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Audio;
 
 namespace AteChips;
 
@@ -27,6 +28,7 @@ public partial class Cpu : VisualizableHardware, ICpu
     private bool _waitingForKey = false;
     private byte _waitingRegister = 0;
     private byte? _pressedKey = null; // track which key was pressed
+
 
     // CPU registers
     public byte[] Registers { get; private set; } = null!;
@@ -67,6 +69,8 @@ public partial class Cpu : VisualizableHardware, ICpu
         get => _ram.GetByte(Ram.SOUND_TIMER_ADDR);
         set => _ram.SetByte(Ram.SOUND_TIMER_ADDR, value);
     }
+
+    public ref byte GetSoundTimerRef() => ref _ram.Memory[Ram.SOUND_TIMER_ADDR];
 
     // hardware we care about
     private readonly FrameBuffer _frameBuffer;
@@ -132,8 +136,6 @@ public partial class Cpu : VisualizableHardware, ICpu
         while (_timerAccumulator >= timerStep)
         {
             if (DelayTimer > 0) { DelayTimer -= 1; }
-            if (SoundTimer > 0) { DelayTimer -= 1; }
-            // todo: trigger a sound on soundtimer = 0
             _timerAccumulator -= timerStep;
         }
 
@@ -214,7 +216,7 @@ public partial class Cpu : VisualizableHardware, ICpu
         if ((instruction & 0xF0FF) == 0xF007) { return LoadRegisterFromDelayTimer(instruction); }
         if ((instruction & 0xF0FF) == 0xF00A) { return WaitForKeypress(instruction); }
         if ((instruction & 0xF0FF) == 0xF015) { return LoadDelayTimer(instruction); }
-        if ((instruction & 0xF0FF) == 0xF018) { throw new NotImplementedException("LD ST, Vx"); }
+        if ((instruction & 0xF0FF) == 0xF018) { return LoadSoundTimer(instruction); }
         if ((instruction & 0xF0FF) == 0xF01E) { return AddRegisterToIndex(instruction); }
         if ((instruction & 0xF0FF) == 0xF029) { return IndexToFontSprite(instruction); }
         if ((instruction & 0xF0FF) == 0xF033) { return BinaryCodedDecimal(instruction); }
@@ -224,7 +226,7 @@ public partial class Cpu : VisualizableHardware, ICpu
         throw new NotImplementedException($"Instruction {instruction:X4} not implemented.");
     }
 
-    public byte UpdatePriority => 1;
+    public byte UpdatePriority => 2;
 
     Action ClearDisplay() => () => _frameBuffer.Reset();
 
@@ -517,6 +519,13 @@ public partial class Cpu : VisualizableHardware, ICpu
         // set the index to the font sprite
         byte register = (byte)((instruction & 0x0F00) >> 8);
         IndexRegister = (ushort)(Ram.FontStartAddress + Registers[register] * 5);
+    };
+
+    Action LoadSoundTimer(ushort instruction) => () =>
+    {
+        // load the sound timer
+        byte register = (byte)((instruction & 0x0F00) >> 8);
+        SoundTimer = Registers[register];
     };
 }
 

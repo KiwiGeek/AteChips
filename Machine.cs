@@ -29,8 +29,8 @@ public class Machine
         _display = Register(_ => new Display(_frameBuffer));
         _ram = Register<Ram>();
         _keyboard = Register<Keyboard>();
+        _buzzer = Register<Buzzer>(_ => new Buzzer(_ram));
         _cpu = Register(_ => new Cpu(_frameBuffer, _keyboard, _ram));
-        Reset();
     }
 
     public T Register<T>() where T : Hardware
@@ -57,11 +57,11 @@ public class Machine
         return _devices.OfType<T>().Single();
     }
 
-    //public bool TryGet<T>(out T? result) where T : Hardware
-    //{
-    //    result = _devices.OfType<T>().FirstOrDefault();
-    //    return result != null;
-    //}
+    public bool TryGet<T>(out T? result) where T : Hardware
+    {
+        result = _devices.OfType<T>().FirstOrDefault();
+        return result != null;
+    }
 
     public static Machine Instance { get; } = new ();
 
@@ -74,6 +74,7 @@ public class Machine
     private readonly Ram _ram;
     private readonly Keyboard _keyboard;
     private readonly Display _display;
+    private readonly Buzzer _buzzer;
     // ReSharper restore NotAccessedField.Local
 
     public void Reset()
