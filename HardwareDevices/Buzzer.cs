@@ -162,7 +162,7 @@ public partial class Buzzer : VisualizableHardware, IBuzzer
 
    
 
-    public void Update(GameTime gameTime)
+    public void Update(double gameTime)
     {
 
 

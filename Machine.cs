@@ -26,7 +26,7 @@ public class Machine
     private Machine()
     {
         _frameBuffer = Register<FrameBuffer>();
-        _display = Register(_ => new Display(_frameBuffer));
+        _display = Register(_ => new Display());
         _ram = Register<Ram>();
         _keyboard = Register<Keyboard>();
         _buzzer = Register<Buzzer>(_ => new Buzzer(_ram));

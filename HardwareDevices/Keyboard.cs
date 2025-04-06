@@ -21,7 +21,7 @@ public class Keyboard : Hardware, IResettable, IKeyboard
     public KeyState[] Keypad { get; } = new KeyState[16];
 
 
-    public void Update(GameTime gameTime)
+    public void Update(double gameTime)
     {
         KeyboardState keyboard = Microsoft.Xna.Framework.Input.Keyboard.GetState();
         // Check for a fresh Alt+Enter press

@@ -115,10 +115,10 @@ public partial class Cpu : VisualizableHardware, ICpu
     }
 
 
-    public void Update(GameTime gameTime)
+    public void Update(double delta)
     {
 
-        double elapsed = gameTime.ElapsedGameTime.TotalSeconds;
+        double elapsed = delta;
 
         _cpuAccumulator += elapsed;
         _timerAccumulator += elapsed;
@@ -223,7 +223,9 @@ public partial class Cpu : VisualizableHardware, ICpu
         if ((instruction & 0xF0FF) == 0xF055) { return StoreMultipleRegisters(instruction); }
         if ((instruction & 0xF0FF) == 0xF065) { return LoadMultipleRegisters(instruction); }
 
-        throw new NotImplementedException($"Instruction {instruction:X4} not implemented.");
+
+        return System();
+        //throw new NotImplementedException($"Instruction {instruction:X4} not implemented.");
     }
 
     public byte UpdatePriority => 2;

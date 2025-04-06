@@ -1,8 +1,6 @@
-﻿using Microsoft.Xna.Framework;
-
-namespace AteChips.Interfaces;
+﻿namespace AteChips.Interfaces;
 
 public interface IDrawable
 {
-    void Draw(GameTime gameTime);
+    void Draw(double delta);
 }

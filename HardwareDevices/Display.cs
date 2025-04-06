@@ -1,153 +1,117 @@
-﻿using AteChips.Interfaces;
-using AteChips.Video.ImGui;
-using AteChips.Video;
-using ImGuiNET;
+﻿using AteChips.Video.ImGui;
+using OpenTK.Graphics.OpenGL4;
+using OpenTK.Mathematics;
+using OpenTK.Windowing.Common;
+using OpenTK.Windowing.Desktop;
+using System;
+using AteChips.Interfaces;
 using Microsoft.Xna.Framework;
-using Microsoft.Xna.Framework.Content;
-using Microsoft.Xna.Framework.Graphics;
-using AteChips.EffectSettings;
+using GameWindow = OpenTK.Windowing.Desktop.GameWindow;
 using IDrawable = AteChips.Interfaces.IDrawable;
+using OpenTK.Windowing.GraphicsLibraryFramework;
 
 namespace AteChips;
 
-public partial class Display : VisualizableHardware, IDrawable
+class Display : VisualizableHardware, IDrawable
 {
-    private SpriteBatch _spriteBatch = null!;
-    private RenderTarget2D _chip8RenderTarget = null!;
+    private GameWindow _window;
+    private ImGuiController _imgui;
     private ImGuiRenderer _imGuiRenderer = null!;
-    private Texture2D _chip8PixelTexture = null!;
-    private PostProcessor _postProcessor = null!;
-    private RenderTarget2D _scaledRenderTarget = null!;
-    private ImGuiController _imGuiController = null!;
-    private GraphicsDevice _graphics = null!;
-    private readonly FrameBuffer _frameBuffer;
+    private bool _loaded = false;
+    private float _frameDelta;
+    private Gpu _gpu = null!; // Assuming Gpu is defined elsewhere
+    private FrameBuffer _frameBuffer = null!; // Assuming FrameBuffer is defined elsewhere
 
-
-    private CurvatureSettings _curvature = null!;
-    private ScanlineSettings _scanlines = null!;
-
-    public Display(FrameBuffer frameBuffer)
+    public Display()
     {
-        _frameBuffer = frameBuffer;
+        var nativeWindowSettings = new NativeWindowSettings()
+        {
+            Size = new Vector2i(1280, 720),
+            Title = "Emulator Display",
+            Flags = ContextFlags.ForwardCompatible,
+        };
+
+        _window = new GameWindow(GameWindowSettings.Default, nativeWindowSettings);
+
+        _window.Load += OnLoad;
+        _window.RenderFrame += OnRenderFrame;
+        _window.UpdateFrame += OnUpdateFrame;
+        _window.Resize += OnResize;
+        _window.Unload += OnUnload;
+        _window.Closing += OnWindowClosing;
+
+        _gpu = new Gpu(); // Assuming Gpu is defined elsewhere
+
+        _imGuiRenderer = new ImGuiRenderer(_window);
     }
 
-    private static bool _useCustomColor;
-    private static int _selectedPhosphorIndex = 2; // default to green
-    private static Vector3 _customColor = new(0.1f, 1.0f, 0.1f);
-
-    public void LoadContent(GraphicsDevice graphics, ContentManager content, Game game)
+    private void OnLoad()
     {
-        //_game = Machine.Instance.Chip8;
-        _graphics = graphics;
-        _spriteBatch = new SpriteBatch(graphics);
-        _chip8RenderTarget = new RenderTarget2D(graphics, _frameBuffer.Width, _frameBuffer.Height);
-        _imGuiRenderer = new ImGuiRenderer(game);
-        float imguiScale = 1.0f; // Try 1.5 to 3.0 depending on your resolution
-
-        ImGui.GetIO().FontGlobalScale = 1.0f; // optional; usually leave at 1
-        ImGui.GetStyle().ScaleAllSizes(imguiScale);
-        _imGuiRenderer.RebuildFontAtlas(); // Important!
-
-        _chip8RenderTarget = new RenderTarget2D(
-            graphics,
-            _frameBuffer.Width,
-            _frameBuffer.Height,
-            false,
-            SurfaceFormat.Color,
-            DepthFormat.None
-        );
-
-        _chip8PixelTexture = new Texture2D(graphics, _frameBuffer.Width, _frameBuffer.Height);
-
-        _postProcessor = new PostProcessor(graphics, _spriteBatch, content);
-        _curvature = _postProcessor.CurvatureSettings;
-        _scanlines = _postProcessor.ScanlineSettings;
-        _imGuiController = new ImGuiController();
-
-        _scaledRenderTarget = new RenderTarget2D(
-            graphics,
-            graphics.PresentationParameters.BackBufferWidth,
-            graphics.PresentationParameters.BackBufferHeight,
-            false,
-            SurfaceFormat.Color,
-            DepthFormat.None
-        );
-
+        GL.ClearColor(0f, 0f, 0f, 1f);
+        _imgui = new ImGuiController(_window.Size.X, _window.Size.Y);
+        InitAudio();
+        _frameBuffer = Machine.Instance.Get<FrameBuffer>();
+        _gpu.Init(_window.Size.X, _window.Size.Y);
+        _loaded = true;
     }
 
-    public void Draw(GameTime gameTime)
+    private void OnUpdateFrame(FrameEventArgs args) { }
+
+    private unsafe void OnRenderFrame(FrameEventArgs args)
     {
-        // 1. Update CHIP-8 texture
-        _chip8PixelTexture.SetData(_frameBuffer!.Pixels);
+        if (!_loaded) return;
 
-        // 2. Draw to internal CHIP-8 render target (logical resolution, no effects)
-        _graphics.SetRenderTarget(_chip8RenderTarget);
-        _graphics.Clear(Color.Black);
-        _spriteBatch.Begin(samplerState: SamplerState.PointClamp);
-        _spriteBatch.Draw(_chip8PixelTexture, Vector2.Zero, Color.White);
-        _spriteBatch.End();
-        _graphics.SetRenderTarget(null);
+        GL.Clear(ClearBufferMask.ColorBufferBit);
+        GLFW.GetFramebufferSize(_window.WindowPtr, out int fbWidth, out int fbHeight);
+        _gpu.Render(0, fbWidth, fbHeight);
+        _imGuiRenderer.Update(_window, _frameDelta);
+        _imgui.RenderUi();
+        _imGuiRenderer.Render();
 
-        // 3. Scale to full screen-sized buffer (no aspect ratio logic here)
-        _graphics.SetRenderTarget(_scaledRenderTarget);
-        _graphics.Clear(Color.Black);
-
-        _spriteBatch.Begin(samplerState: SamplerState.PointClamp);
-        _spriteBatch.Draw(_chip8RenderTarget, _scaledRenderTarget.Bounds, Color.White);
-        _spriteBatch.End();
-        _graphics.SetRenderTarget(null);
-
-        // 4. Post-process scaled image (pass correct height for scanlines)
-        RenderTarget2D finalOutput = _postProcessor.Render(_scaledRenderTarget, gameTime, _graphics.Viewport.Width);
-
-        // 5. Output to screen (stretch to full screen, use linear filter for better CRT quality)
-        _graphics.Clear(Color.Black);
-        _spriteBatch.Begin(samplerState: SamplerState.LinearClamp);
-        Rectangle targetRect = Settings.MaintainAspectRatio
-            ? GetLetterboxedDestination(_graphics, _scaledRenderTarget.Width, _scaledRenderTarget.Height)
-            : _graphics.Viewport.Bounds;
-
-        _spriteBatch.Draw(finalOutput, targetRect, Color.White);
-        _spriteBatch.End();
-
-        // 6. ImGui overlay
-        if (Settings.ShowImGui)
-        {
-            _imGuiRenderer.BeforeLayout(gameTime);
-            _imGuiController.RenderUi();
-            _imGuiRenderer.AfterLayout();
-        }
+        _window.SwapBuffers();
     }
 
-
-    static Rectangle GetLetterboxedDestination(GraphicsDevice device, int sourceWidth, int sourceHeight)
+    public void Draw(double delta)
     {
-        int screenWidth = device.Viewport.Width;
-        int screenHeight = device.Viewport.Height;
+        _frameDelta = (float)delta;
+        _window.ProcessEvents(delta);
 
-        float targetAspect = (float)sourceWidth / sourceHeight;
-        float screenAspect = (float)screenWidth / screenHeight;
-
-        int width, height;
-
-        if (screenAspect > targetAspect)
+        if (!_loaded)
         {
-            // Window is wider than target
-            height = screenHeight;
-            width = (int)(height * targetAspect);
-        }
-        else
-        {
-            // Window is taller than target
-            width = screenWidth;
-            height = (int)(width / targetAspect);
+            OnLoad(); // ✅ manually initialize OpenGL, GPU, ImGui, etc.
+            OnResize(new ResizeEventArgs(_window.Size));
         }
 
-        int x = (screenWidth - width) / 2;
-        int y = (screenHeight - height) / 2;
-
-        return new Rectangle(x, y, width, height);
+        OnRenderFrame(new FrameEventArgs(delta));
     }
 
+    private void OnResize(ResizeEventArgs e)
+    {
+        GL.Viewport(0, 0, _window.Size.X, _window.Size.Y);
+        //_imgui.WindowResized(_window.Size.X, _window.Size.Y);
+    }
+
+    private void OnUnload()
+    {
+        // Cleanup audio, ImGui, and GPU resources
+    }
+
+    private void InitAudio()
+    {
+        //var device = ALC.OpenDevice(null);
+        //var context = ALC.CreateContext(device, (int[])null);
+        //ALC.MakeContextCurrent(context);
+        // Stub: init streaming, buffer setup, etc.
+    }
+
+    private void OnWindowClosing(System.ComponentModel.CancelEventArgs e)
+    {
+        Environment.Exit(0); // Ensures full app shutdown
+    }
+
+    public override void RenderVisual()
+    {
+        //throw new NotImplementedException();
+    }
 
 }

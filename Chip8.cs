@@ -1,96 +1,59 @@
-﻿using System;
-using Microsoft.Xna.Framework;
-using AteChips.Interfaces;
-using IDrawable = AteChips.Interfaces.IDrawable;
+﻿using System.Diagnostics;
 
 namespace AteChips;
-public class Chip8 : Game
+class Chip8
 {
-    // these are just helper methods for the various bits of hardware to access each other
-    // they're pulled from the machine instance.
-    private readonly Machine _machine;
-    private readonly Keyboard _keyboard;
-    private readonly FrameBuffer _frameBuffer;
-    private readonly Display _display;
-    private readonly Ram _ram;
-    private readonly Cpu _cpu;
 
-    private bool firstTimeDebug = true;
+    private readonly Machine _machine;
+    private Cpu _cpu;
+    private bool done = false;
+    private Display _display;
+
+    private double _renderAccumulator = 0;
+    private const double RenderHz = 60;
 
     public Chip8(Machine machine)
     {
         _machine = machine;
-        _keyboard = _machine.Get<Keyboard>();
-        _frameBuffer = _machine.Get<FrameBuffer>();
-        _display = _machine.Get<Display>();
-        _ram = _machine.Get<Ram>();
+    }
+
+    public void Start()
+    {
         _cpu = _machine.Get<Cpu>();
+        _display = _machine.Get<Display>();
 
-    }
+        Stopwatch stopwatch = Stopwatch.StartNew();
+        double previousTime = stopwatch.Elapsed.TotalSeconds;
 
-    public void LoadRom(string filePath) => _ram.LoadRom(filePath);
-
-    // Called by MonoGame; this is the only part I couldn't move outside this method.
-    protected override void LoadContent() => _display.LoadContent(GraphicsDevice, Content, this);
-
-    // Update the game state
-    protected override void Update(GameTime gameTime)
-    {
-
-        if (firstTimeDebug)
+        while (!done)
         {
-            firstTimeDebug ^= true;
-            // load the rom, and pause the CPU
-            _cpu.Reset();
-            _cpu.Pause();
-            
-            // maximize the window
-            MonoGameManager.ToggleFullScreen();
+            double currentTime = stopwatch.Elapsed.TotalSeconds;
+            double delta = currentTime - previousTime;
+            previousTime = currentTime;
 
-            // show the ImGui windows we care about
-            Settings.ShowImGui = true;
-            _cpu.VisualShown = true;
-            _ram.VisualShown = true;
-        }
+            Update(delta);
+            Render(delta);
 
-        // a frame has occured; we want to now emulate the next machine cycle.
-        // todo: ExecutationState should be in the emulator settings, not the CPU.
-        switch (_cpu.ExecutionState)
-        {
-            case Cpu.CpuExecutionState.Running:
-                NextMachineCycle(gameTime);
-                break;
-
-            case Cpu.CpuExecutionState.Stepping:
-                NextMachineCycle(gameTime);
-                _cpu.Pause();
-                break;
-
-            case Cpu.CpuExecutionState.Paused:
-                // Do nothing
-                break;
-        }
-
-    }
-
-    private void NextMachineCycle(GameTime gameTime)
-    {
-        // the updatables list is already sorted by priority, so we can just
-        // iterate through it and call each one.
-        foreach (IUpdatable updatable in _machine.Updatables)
-        {
-            updatable.Update(gameTime);
+            _cpu.Step();
+            //Thread.Sleep(1);
         }
     }
 
-    // Draw the game state
-    protected override void Draw(GameTime gameTime)
+    private void Update(double delta)
     {
+        _cpu.Update(delta);
+    }
 
-        // get all the drawables - in the chip8, this is just the display
-        foreach (IDrawable drawable in _machine.Drawables)
+    private void Render(double delta)
+    {
+        _renderAccumulator += delta;
+        double renderInterval = 1.0 / RenderHz;
+
+        while (_renderAccumulator >= renderInterval)
         {
-            drawable.Draw(gameTime);
+
+            _display.Draw(renderInterval);
+            _renderAccumulator -= renderInterval;
         }
     }
 

@@ -3,7 +3,7 @@ using ImGuiNET;
 using System.Numerics;
 
 namespace AteChips;
-public partial class Display
+public partial class Monogame_Display
 {
 
     public override void RenderVisual()
