@@ -8,36 +8,85 @@ public class Machine
 {
     private readonly List<IHardware> _devices = [];
 
-    // todo: Cache these, and only refresh when the device changes
+    public IReadOnlyList<Hardware> Devices
+    {
+        get
+        {
+            if (_deviceListDirty) { RebuildCacheIfNeeded(); }
+            return _hardwareCache!;
+        }
+    }
 
-    // ReSharper disable once UnusedMember.Global
-    public IReadOnlyList<Hardware> Devices => [.. _devices.Cast<Hardware>()];
+    public IReadOnlyList<IVisualizable> Visualizables
+    {
+        get
+        {
+            if (_deviceListDirty) { RebuildCacheIfNeeded(); }
+            return _visualizableCache!;
+        }
+    }
 
-    public IReadOnlyList<IVisualizable> Visualizables => 
-        [.. _devices.OfType<IVisualizable>().OrderBy(visual => visual.GetType().Name)];
+    public IReadOnlyList<IResettable> Resettables
+    {
+        get
+        {
+            if (_deviceListDirty) { RebuildCacheIfNeeded(); }
+            return _resettableCache!;
+        }
+    }
 
-    public IReadOnlyList<IResettable> Resettables => [.. _devices.OfType<IResettable>()];
+    public IReadOnlyList<IUpdatable> Updatables
+    {
+        get
+        {
+            if (_deviceListDirty) { RebuildCacheIfNeeded(); }
+            return _updatableCache!;
+        }
+    }
 
-    public IReadOnlyList<IUpdatable> Updatables => [.. _devices.OfType<IUpdatable>().OrderBy(f=> f.UpdatePriority)];
+    public IReadOnlyList<IDrawable> Drawables
+    {
+        get
+        {
+            if (_deviceListDirty) { RebuildCacheIfNeeded(); }
+            return _drawableCache!;
+        }
+    }
 
-    public IReadOnlyList<IDrawable> Drawables => [.. _devices.OfType<IDrawable>()];
+    private void RebuildCacheIfNeeded()
+    {
+        _hardwareCache = _devices.Cast<Hardware>().ToList();
+        _visualizableCache = _devices.OfType<IVisualizable>().OrderBy(v => v.GetType().Name).ToList();
+        _resettableCache = _devices.OfType<IResettable>().ToList();
+        _updatableCache = _devices.OfType<IUpdatable>().OrderBy(u => u.UpdatePriority).ToList();
+        _drawableCache = _devices.OfType<IDrawable>().ToList();
+        _deviceListDirty = false;
+    }
+
+    private IReadOnlyList<Hardware>? _hardwareCache;
+    private IReadOnlyList<IVisualizable>? _visualizableCache;
+    private IReadOnlyList<IResettable>? _resettableCache;
+    private IReadOnlyList<IUpdatable>? _updatableCache;
+    private IReadOnlyList<IDrawable>? _drawableCache;
+    private bool _deviceListDirty = true;
 
 
     private Machine()
     {
-        _frameBuffer = Register<FrameBuffer>();
-        _gpu = Register<Gpu>();
-        _display = Register(_ => new Display());
-        _ram = Register<Ram>();
-        _keyboard = Register<Keyboard>();
-        _buzzer = Register(_ => new Buzzer(_ram));
-        _cpu = Register(_ => new Cpu(_frameBuffer, _keyboard, _ram));
+        FrameBuffer frameBuffer = Register<FrameBuffer>();
+        Gpu gpu = Register(_ => new Gpu(frameBuffer));
+        Register(_ => new Display(gpu));
+        Ram ram = Register<Ram>();
+        Keyboard keyboard = Register<Keyboard>();
+        Register(_ => new Buzzer(ram));
+        Register(_ => new Cpu(frameBuffer, keyboard, ram));
     }
 
     public T Register<T>() where T : Hardware
     {
         T device = (T)Activator.CreateInstance(typeof(T))!;
         _devices.Add(device);
+        _deviceListDirty = true;
         return device;
     }
 
@@ -45,6 +94,7 @@ public class Machine
     {
         T instance = factory(this);
         _devices.Add(instance);
+        _deviceListDirty = true;
         return instance;
     }
     public T Get<T>() where T : Hardware
@@ -60,18 +110,6 @@ public class Machine
 
     public static Machine Instance { get; } = new ();
 
-    // this is just a static class so we can reference various bits of hardware from other bits
-    // of hardware, without having to pass references around.
-    // ReSharper disable once PrivateFieldCanBeConvertedToLocalVariable
-    private readonly FrameBuffer _frameBuffer;
-    // ReSharper disable NotAccessedField.Local
-    private readonly Gpu _gpu;
-    private readonly Cpu _cpu;
-    private readonly Ram _ram;
-    private readonly Keyboard _keyboard;
-    private readonly Display _display;
-    private readonly Buzzer _buzzer;
-    // ReSharper restore NotAccessedField.Local
 
     public void Reset()
     {

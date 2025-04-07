@@ -1,29 +1,39 @@
 ﻿using System.Diagnostics;
 using System.Linq;
 using AteChips.Interfaces;
+// ReSharper disable ForCanBeConvertedToForeach
+// ReSharper disable LoopCanBeConvertedToQuery
 
 namespace AteChips;
 class Chip8
 {
-
-    private readonly Machine _machine;
-    private bool done = false;
+    private readonly Display _display;
+    private readonly IUpdatable[] _updatables;
+    private readonly IDrawable[] _drawables;
+    private readonly bool _singleDrawable;
 
     public Chip8(Machine machine)
     {
-        _machine = machine;
+        _display = machine.Get<Display>();
+
+        _drawables = machine.Drawables.ToArray();
+        _singleDrawable = _drawables.Length == 1;
+
+        _updatables = machine.Updatables.ToArray();
     }
 
-    public void Start()
+    public void Run()
     {
-        Stopwatch stopwatch = Stopwatch.StartNew();
-        double previousTime = stopwatch.Elapsed.TotalSeconds;
+        long previousTicks = Stopwatch.GetTimestamp();
+        long frequency = Stopwatch.Frequency;
+
+        bool done = false;
 
         while (!done)
         {
-            double currentTime = stopwatch.Elapsed.TotalSeconds;
-            double delta = currentTime - previousTime;
-            previousTime = currentTime;
+            long currentTicks = Stopwatch.GetTimestamp();
+            double delta = (currentTicks - previousTicks) / (double)frequency;
+            previousTicks = currentTicks;
 
             done = Update(delta);
             Render(delta);
@@ -33,9 +43,10 @@ class Chip8
     private bool Update(double delta)
     {
         bool allDone = false;
-        foreach (IUpdatable updatable in _machine.Updatables.OrderBy(f => f.UpdatePriority))
+
+        foreach (IUpdatable updatable in _updatables)
         {
-            if (updatable.Update(delta)) { allDone = true; }
+            allDone |= updatable.Update(delta);
         }
 
         return allDone;
@@ -43,12 +54,16 @@ class Chip8
 
     private void Render(double delta)
     {
+        if (_singleDrawable)
+        {
+            _display.Draw(delta);
+            return;
+        }
 
-        foreach (IDrawable drawable in _machine.Drawables)
+        foreach (IDrawable drawable in _drawables)
         {
             drawable.Draw(delta);
         }
-
     }
 
 }

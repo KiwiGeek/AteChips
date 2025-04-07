@@ -8,7 +8,7 @@ class Gpu : Hardware
 {
     private const int Width = 64;
     private const int Height = 32;
-    private FrameBuffer _framebuffer;
+    private FrameBuffer _frameBuffer;
     private int _projectionLocation;
     private int _windowWidth;
     private int _windowHeight;
@@ -16,9 +16,14 @@ class Gpu : Hardware
     private int _texture;
     private int _vao, _vbo, _shader;
 
-    public void Init(int windowWidth, int windowHeight)
+    public Gpu(FrameBuffer frameBuffer)
     {
-        _framebuffer = Machine.Instance.Get<FrameBuffer>();
+        _frameBuffer = frameBuffer;
+    }
+
+    public void Init( int windowWidth, int windowHeight)
+    {
+
         _texture = GL.GenTexture();
         GL.BindTexture(TextureTarget.Texture2D, _texture);
 
@@ -43,7 +48,7 @@ class Gpu : Hardware
 
     public void Render(double delta, int windowWidth, int windowHeight)
     {
-        ConvertFramebufferToBytes(_framebuffer.Pixels, _textureBuffer);
+        ConvertFramebufferToBytes(_frameBuffer.Pixels, _textureBuffer);
 
         GL.BindTexture(TextureTarget.Texture2D, _texture);
         GL.TexSubImage2D(TextureTarget.Texture2D, 0, 0, 0, Width, Height, PixelFormat.Red, PixelType.UnsignedByte, _textureBuffer);
@@ -106,12 +111,12 @@ class Gpu : Hardware
 
     public void Clear()
     {
-        _framebuffer.Reset();
+        _frameBuffer.Reset();
     }
 
     public void SetPixel(int x, int y, byte value)
     {
-        _framebuffer[x, y] = value == 1;
+        _frameBuffer[x, y] = value == 1;
     }
 
     private int CreateShader()
