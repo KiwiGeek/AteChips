@@ -1,18 +1,17 @@
 ﻿using System;
 using AteChips.Interfaces;
-using Microsoft.Xna.Framework;
-using Microsoft.Xna.Framework.Audio;
 
 namespace AteChips;
 
 public partial class Cpu : VisualizableHardware, ICpu
 {
 
+    private double _cycleAccumulator = 0;
+    private const double ClockRateHz = 700;
+    private const double SecondsPerCycle = 1.0 / ClockRateHz;
+
     // todo: adjustable hertz
     // todo: quirks mode
-
-    private double _cpuAccumulator = 0;
-    private double _timerAccumulator = 0;
 
     // frequencies (in Hz)
     private const double CPU_HZ = 1400;
@@ -96,7 +95,7 @@ public partial class Cpu : VisualizableHardware, ICpu
         StackPointer = 0x00;
         DelayTimer = 0x00;
         SoundTimer = 0x00;
-        ExecutionState = CpuExecutionState.Running;
+        ExecutionState = CpuExecutionState.Paused;
     }
 
     public void Step()
@@ -115,29 +114,33 @@ public partial class Cpu : VisualizableHardware, ICpu
     }
 
 
-    public void Update(double delta)
+    public bool Update(double delta)
     {
 
-        double elapsed = delta;
+        _cycleAccumulator += delta;
 
-        _cpuAccumulator += elapsed;
-        _timerAccumulator += elapsed;
+        if (ExecutionState == CpuExecutionState.Paused)
+            return false;
 
-        double cpuStep = 1.0 / CPU_HZ;
-        double timerStep = 1.0 / TIMER_HZ;
-
-        // Run CPU steps as often as needed
-        while (_cpuAccumulator >= cpuStep)
+        while (_cycleAccumulator >= SecondsPerCycle)
         {
-            Tick();
-            _cpuAccumulator -= cpuStep;
+            if (ExecutionState == CpuExecutionState.Running ||
+                ExecutionState == CpuExecutionState.Stepping)
+            {
+                Tick(); // Execute one instruction
+            }
+
+            _cycleAccumulator -= SecondsPerCycle;
+
+            // If we were stepping, run only one instruction then pause
+            if (ExecutionState == CpuExecutionState.Stepping)
+            {
+                ExecutionState = CpuExecutionState.Paused;
+                break;
+            }
         }
 
-        while (_timerAccumulator >= timerStep)
-        {
-            if (DelayTimer > 0) { DelayTimer -= 1; }
-            _timerAccumulator -= timerStep;
-        }
+        return false;
 
     }
 

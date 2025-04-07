@@ -215,7 +215,7 @@ void main()
     /// <summary>
     /// Updates ImGui input and IO configuration state.
     /// </summary>
-    public void Update(GameWindow wnd, float deltaSeconds)
+    public void Update(GameWindow wnd, double deltaSeconds)
     {
         if (_frameBegun)
         {
@@ -233,14 +233,14 @@ void main()
     /// Sets per-frame data based on the associated window.
     /// This is called by Update(float).
     /// </summary>
-    private unsafe void SetPerFrameImGuiData(float deltaSeconds)
+    private unsafe void SetPerFrameImGuiData(double deltaSeconds)
     {
         ImGuiIOPtr io = ImGuiNET.ImGui.GetIO();
 
         GLFW.GetFramebufferSize(_window.WindowPtr, out int fbWidth, out int fbHeight);
         io.DisplaySize = new System.Numerics.Vector2(fbWidth, fbHeight);
         io.DisplayFramebufferScale = new System.Numerics.Vector2(1, 1);
-        io.DeltaTime = deltaSeconds; // DeltaTime is in seconds.
+        io.DeltaTime = (float)deltaSeconds; // DeltaTime is in seconds.
     }
 
     readonly List<char> PressedChars = new List<char>();

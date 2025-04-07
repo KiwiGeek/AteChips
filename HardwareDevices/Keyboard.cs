@@ -1,13 +1,17 @@
 ﻿using System;
 using AteChips.Interfaces;
-using Microsoft.Xna.Framework;
-using Microsoft.Xna.Framework.Input;
+using OpenTK.Windowing.Desktop;
+using OpenTK.Windowing.GraphicsLibraryFramework;
 
 namespace AteChips;
+
 public class Keyboard : Hardware, IResettable, IKeyboard
 {
 
-    private KeyboardState _prevKeyboardState;
+    private double _cycleAccumulator = 0;
+
+    private const double ClockRateHz = 700_000;
+    private const double SecondsPerCycle = 1.0 / ClockRateHz;
 
     public enum KeyState
     {
@@ -17,63 +21,69 @@ public class Keyboard : Hardware, IResettable, IKeyboard
         Released   // transitioned to up *this* frame
     }
 
-    private bool[] _lastKeyStates = new bool[16];
+    private readonly bool[] _lastKeyStates = new bool[16];
     public KeyState[] Keypad { get; } = new KeyState[16];
 
 
-    public void Update(double gameTime)
+    public bool Update(double delta)
     {
-        KeyboardState keyboard = Microsoft.Xna.Framework.Input.Keyboard.GetState();
-        // Check for a fresh Alt+Enter press
-        bool alt = keyboard.IsKeyDown(Keys.LeftAlt) || keyboard.IsKeyDown(Keys.RightAlt);
-        bool enter = keyboard.IsKeyDown(Keys.Enter);
-        bool prevEnter = _prevKeyboardState.IsKeyDown(Keys.Enter);
-        if (alt && enter && !prevEnter)
+
+        _cycleAccumulator += delta;
+
+        if (_cycleAccumulator >= SecondsPerCycle)
         {
-            MonoGameManager.ToggleFullScreen();
-        }
+            GameWindow window = Machine.Instance.Get<Display>().Window;
+            KeyboardState? keyboard = window.KeyboardState;
 
-        bool currentBacktick = keyboard.IsKeyDown(Keys.OemTilde);
-        bool prevBacktick = _prevKeyboardState.IsKeyDown(Keys.OemTilde);
-
-        if (currentBacktick && !prevBacktick)
-        {
-            Settings.ShowImGui = !Settings.ShowImGui;
-        }
-
-        if (keyboard.IsKeyDown(Keys.Escape))
-        {
-            Environment.Exit(0);
-        }
-
-        Keys[] _chipToMonokey = [
-            Keys.X, Keys.D1, Keys.D2, Keys.D3, 
-            Keys.Q, Keys.W, Keys.E, Keys.A, 
-            Keys.S, Keys.D, Keys.Z, Keys.C,
-            Keys.D4, Keys.R, Keys.F, Keys.V
-        ];
-
-        for (int i = 0; i < 16; i++)
-        {
-            var key = _chipToMonokey[i]; // your mapping: 0..F → Keys.D1, Keys.D2, ...
-            bool isDown = keyboard.IsKeyDown(key);
-            bool wasDown = _lastKeyStates[i];
-
-            Keypad[i] = (isDown, wasDown) switch
+            bool alt = keyboard.IsKeyDown(Keys.LeftAlt) || keyboard.IsKeyDown(Keys.RightAlt);
+            bool enter = keyboard.IsKeyDown(Keys.Enter);
+            if (alt && enter && !keyboard.WasKeyDown(Keys.Enter))
             {
-                (true, false) => KeyState.Pressed,
-                (true, true) => KeyState.Down,
-                (false, true) => KeyState.Released,
-                (false, false) => KeyState.Up,
-            };
+                // Toggle fullscreen here if needed
+                // todo: fullscreen with OpenTK
+                throw new NotImplementedException("need to do fullscreen still");
+            }
 
-            _lastKeyStates[i] = isDown;
+            if (keyboard.IsKeyDown(Keys.GraveAccent) && !keyboard.WasKeyDown(Keys.GraveAccent))
+            {
+                Settings.ShowImGui = !Settings.ShowImGui;
+            }
+
+            if (keyboard.IsKeyDown(Keys.Escape))
+            {
+                return true;
+            }
+
+            Keys[] _chipToOpenTK = [
+                Keys.X, Keys.D1, Keys.D2, Keys.D3,
+                Keys.Q, Keys.W, Keys.E, Keys.A,
+                Keys.S, Keys.D, Keys.Z, Keys.C,
+                Keys.D4, Keys.R, Keys.F, Keys.V
+            ];
+
+            for (int i = 0; i < 16; i++)
+            {
+                var key = _chipToOpenTK[i];
+                bool isDown = keyboard.IsKeyDown(key);
+                bool wasDown = _lastKeyStates[i];
+
+                Keypad[i] = (isDown, wasDown) switch
+                {
+                    (true, false) => KeyState.Pressed,
+                    (true, true) => KeyState.Down,
+                    (false, true) => KeyState.Released,
+                    (false, false) => KeyState.Up,
+                };
+
+                _lastKeyStates[i] = isDown;
+            }
+
+            _cycleAccumulator = 0;
         }
 
-        // Save current state for next frame
-        _prevKeyboardState = keyboard;
+        // todo: split chip8 keypad and UI keyboard inputs.
 
-        // todo: split _keyboard_ and _chip8_keyboard_ into two classes so that the ui isn't blocked when the cpuisn't running
+        return false;
     }
 
     public void Reset()

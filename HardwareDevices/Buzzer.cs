@@ -162,7 +162,7 @@ public partial class Buzzer : VisualizableHardware, IBuzzer
 
    
 
-    public void Update(double gameTime)
+    public bool Update(double gameTime)
     {
 
 
@@ -179,6 +179,8 @@ public partial class Buzzer : VisualizableHardware, IBuzzer
         {
             _buzzerInstance.Stop();
         }
+
+        return false;
 
     }
 

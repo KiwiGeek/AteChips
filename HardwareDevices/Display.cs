@@ -5,7 +5,6 @@ using OpenTK.Windowing.Common;
 using OpenTK.Windowing.Desktop;
 using System;
 using AteChips.Interfaces;
-using Microsoft.Xna.Framework;
 using GameWindow = OpenTK.Windowing.Desktop.GameWindow;
 using IDrawable = AteChips.Interfaces.IDrawable;
 using OpenTK.Windowing.GraphicsLibraryFramework;
@@ -21,6 +20,11 @@ class Display : VisualizableHardware, IDrawable
     private float _frameDelta;
     private Gpu _gpu = null!; // Assuming Gpu is defined elsewhere
     private FrameBuffer _frameBuffer = null!; // Assuming FrameBuffer is defined elsewhere
+    public GameWindow Window => _window;
+
+    private double _renderAccumulator = 0;
+    private const double RenderHz = 60;
+    private const double RenderInterval = 1.0 / RenderHz;
 
     public Display()
     {
@@ -64,7 +68,7 @@ class Display : VisualizableHardware, IDrawable
         GL.Clear(ClearBufferMask.ColorBufferBit);
         GLFW.GetFramebufferSize(_window.WindowPtr, out int fbWidth, out int fbHeight);
         _gpu.Render(0, fbWidth, fbHeight);
-        _imGuiRenderer.Update(_window, _frameDelta);
+        _imGuiRenderer.Update(_window, args.Time);
         _imgui.RenderUi();
         _imGuiRenderer.Render();
 
@@ -73,16 +77,21 @@ class Display : VisualizableHardware, IDrawable
 
     public void Draw(double delta)
     {
-        _frameDelta = (float)delta;
-        _window.ProcessEvents(delta);
 
+        _window.ProcessEvents(delta);
         if (!_loaded)
         {
             OnLoad(); // ✅ manually initialize OpenGL, GPU, ImGui, etc.
             OnResize(new ResizeEventArgs(_window.Size));
         }
 
-        OnRenderFrame(new FrameEventArgs(delta));
+        _renderAccumulator += delta;
+        while (_renderAccumulator >= RenderInterval)
+        {
+            OnRenderFrame(new FrameEventArgs(RenderInterval));
+            _renderAccumulator = 0;
+        }
+
     }
 
     private void OnResize(ResizeEventArgs e)

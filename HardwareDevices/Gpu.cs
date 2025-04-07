@@ -1,12 +1,10 @@
 ﻿using System;
-using Microsoft.Xna.Framework;
+using AteChips.Interfaces;
 using OpenTK.Graphics.OpenGL4;
 using OpenTK.Mathematics;
-using OpenTK.Windowing.Desktop;
-using OpenTK.Windowing.GraphicsLibraryFramework;
 
 namespace AteChips;
-class Gpu
+class Gpu : Hardware
 {
     private const int Width = 64;
     private const int Height = 32;

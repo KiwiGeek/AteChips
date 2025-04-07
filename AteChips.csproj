@@ -15,6 +15,7 @@
   <ItemGroup>
     <Compile Remove="HardwareDevices\Monogame_Display.cs" />
     <Compile Remove="HardwareVisualizerPartials\Monogame_DisplayVisualizer.cs" />
+    <Compile Remove="MonoGameManager.cs" />
     <Compile Remove="Monogame_Chip8.cs" />
   </ItemGroup>
   <ItemGroup>

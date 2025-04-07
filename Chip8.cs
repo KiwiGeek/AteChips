@@ -1,16 +1,13 @@
 ﻿using System.Diagnostics;
+using System.Linq;
+using AteChips.Interfaces;
 
 namespace AteChips;
 class Chip8
 {
 
     private readonly Machine _machine;
-    private Cpu _cpu;
     private bool done = false;
-    private Display _display;
-
-    private double _renderAccumulator = 0;
-    private const double RenderHz = 60;
 
     public Chip8(Machine machine)
     {
@@ -19,9 +16,6 @@ class Chip8
 
     public void Start()
     {
-        _cpu = _machine.Get<Cpu>();
-        _display = _machine.Get<Display>();
-
         Stopwatch stopwatch = Stopwatch.StartNew();
         double previousTime = stopwatch.Elapsed.TotalSeconds;
 
@@ -31,30 +25,30 @@ class Chip8
             double delta = currentTime - previousTime;
             previousTime = currentTime;
 
-            Update(delta);
+            done = Update(delta);
             Render(delta);
-
-            _cpu.Step();
-            //Thread.Sleep(1);
         }
     }
 
-    private void Update(double delta)
+    private bool Update(double delta)
     {
-        _cpu.Update(delta);
+        bool allDone = false;
+        foreach (IUpdatable updatable in _machine.Updatables.OrderBy(f => f.UpdatePriority))
+        {
+            if (updatable.Update(delta)) { allDone = true; }
+        }
+
+        return allDone;
     }
 
     private void Render(double delta)
     {
-        _renderAccumulator += delta;
-        double renderInterval = 1.0 / RenderHz;
 
-        while (_renderAccumulator >= renderInterval)
+        foreach (IDrawable drawable in _machine.Drawables)
         {
-
-            _display.Draw(renderInterval);
-            _renderAccumulator -= renderInterval;
+            drawable.Draw(delta);
         }
+
     }
 
 }

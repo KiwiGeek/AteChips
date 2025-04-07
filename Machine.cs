@@ -26,10 +26,11 @@ public class Machine
     private Machine()
     {
         _frameBuffer = Register<FrameBuffer>();
+        _gpu = Register<Gpu>();
         _display = Register(_ => new Display());
         _ram = Register<Ram>();
         _keyboard = Register<Keyboard>();
-        _buzzer = Register<Buzzer>(_ => new Buzzer(_ram));
+        _buzzer = Register(_ => new Buzzer(_ram));
         _cpu = Register(_ => new Cpu(_frameBuffer, _keyboard, _ram));
     }
 
@@ -46,12 +47,6 @@ public class Machine
         _devices.Add(instance);
         return instance;
     }
-
-    //public void Deregister<T>() where T : Hardware
-    //{
-    //    _devices.RemoveAll(f=> f.GetType() == typeof(T));
-    //}
-
     public T Get<T>() where T : Hardware
     {
         return _devices.OfType<T>().Single();
@@ -70,6 +65,7 @@ public class Machine
     // ReSharper disable once PrivateFieldCanBeConvertedToLocalVariable
     private readonly FrameBuffer _frameBuffer;
     // ReSharper disable NotAccessedField.Local
+    private readonly Gpu _gpu;
     private readonly Cpu _cpu;
     private readonly Ram _ram;
     private readonly Keyboard _keyboard;
