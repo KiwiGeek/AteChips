@@ -1,17 +1,13 @@
 ﻿using System;
 using AteChips.Interfaces;
 using OpenTK.Graphics.OpenGL4;
-using OpenTK.Mathematics;
 
 namespace AteChips;
 class Gpu : Hardware
 {
     private const int Width = 64;
     private const int Height = 32;
-    private FrameBuffer _frameBuffer;
-    private int _projectionLocation;
-    private int _windowWidth;
-    private int _windowHeight;
+    private readonly FrameBuffer _frameBuffer;
 
     private int _texture;
     private int _vao, _vbo, _shader;
@@ -33,17 +29,8 @@ class Gpu : Hardware
         GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)TextureMagFilter.Nearest);
 
         _shader = CreateShader();
-        _projectionLocation = GL.GetUniformLocation(_shader, "projection");
-
-        _windowHeight = windowHeight;
-        _windowWidth = windowWidth;
 
         SetupFullscreenQuad();
-    }
-
-    public void Tick()
-    {
-        // Future: cycle-based GPU logic (timing, scanlines, etc.)
     }
 
     public void Render(double delta, int x, int y, int width, int height)
@@ -53,24 +40,22 @@ class Gpu : Hardware
         GL.BindTexture(TextureTarget.Texture2D, _texture);
         GL.TexSubImage2D(TextureTarget.Texture2D, 0, 0, 0, Width, Height, PixelFormat.Red, PixelType.UnsignedByte, _textureBuffer);
 
-        GL.Viewport(x, y, width, height); // ✅ use the aspect-aware viewport
-        _windowWidth = width;
-        _windowHeight = height;
+        GL.Viewport(x, y, width, height); 
 
         DrawFullscreenQuad();
     }
 
     public void SetupFullscreenQuad()
     {
-        float[] verts = {
-            // x, y, u, v (in pixel space)
-            0f,   0f,  0f, 0f,
-            0f,  32f,  0f, 1f,
-           64f,  32f,  1f, 1f,
+        float[] vertices = {
+            //   X      Y       U     V
+            -1f, -1f,   0f, 1f,  // bottom-left
+            1f, -1f,   1f, 1f,  // bottom-right
+            1f,  1f,   1f, 0f,  // top-right
 
-            0f,   0f,  0f, 0f,
-           64f,  32f,  1f, 1f,
-           64f,   0f,  1f, 0f,
+            -1f, -1f,   0f, 1f,  // bottom-left
+            1f,  1f,   1f, 0f,  // top-right
+            -1f,  1f,   0f, 0f   // top-left
         };
 
         _vao = GL.GenVertexArray();
@@ -78,12 +63,15 @@ class Gpu : Hardware
 
         GL.BindVertexArray(_vao);
         GL.BindBuffer(BufferTarget.ArrayBuffer, _vbo);
-        GL.BufferData(BufferTarget.ArrayBuffer, verts.Length * sizeof(float), verts, BufferUsageHint.StaticDraw);
+        GL.BufferData(BufferTarget.ArrayBuffer, vertices.Length * sizeof(float), vertices, BufferUsageHint.StaticDraw);
 
-        GL.EnableVertexAttribArray(0);
+        // Position (location = 0)
         GL.VertexAttribPointer(0, 2, VertexAttribPointerType.Float, false, 4 * sizeof(float), 0);
-        GL.EnableVertexAttribArray(1);
+        GL.EnableVertexAttribArray(0);
+
+        // TexCoord (location = 1)
         GL.VertexAttribPointer(1, 2, VertexAttribPointerType.Float, false, 4 * sizeof(float), 2 * sizeof(float));
+        GL.EnableVertexAttribArray(1);
     }
 
     private byte[] _textureBuffer = new byte[Width * Height];
@@ -97,50 +85,39 @@ class Gpu : Hardware
     private void DrawFullscreenQuad()
     {
         GL.UseProgram(_shader);
-
-        Matrix4 projection = Matrix4.CreateOrthographicOffCenter(
-            0, 64,
-            32, 0, // flip Y for top-left origin
-            -1.0f, 1.0f
-        );
-        GL.UniformMatrix4(_projectionLocation, false, ref projection);
-
         GL.BindVertexArray(_vao);
         GL.DrawArrays(PrimitiveType.Triangles, 0, 6);
-    }
-
-    public void Clear()
-    {
-        _frameBuffer.Reset();
-    }
-
-    public void SetPixel(int x, int y, byte value)
-    {
-        _frameBuffer[x, y] = value == 1;
     }
 
     private int CreateShader()
     {
         string vertexSource = @"
         #version 330 core
-        layout (location = 0) in vec2 in_pos;
-        layout (location = 1) in vec2 in_uv;
-        uniform mat4 projection;
-        out vec2 uv;
-        void main() {
-            uv = in_uv;
-            gl_Position = projection * vec4(in_pos, 0.0, 1.0);
-        }";
+
+layout(location = 0) in vec2 aPosition;
+layout(location = 1) in vec2 aTexCoord;
+
+out vec2 vTexCoord;
+
+void main()
+{
+    gl_Position = vec4(aPosition, 0.0, 1.0);
+    vTexCoord = aTexCoord;
+}";
 
         string fragmentSource = @"
         #version 330 core
-        in vec2 uv;
-        out vec4 color;
-        uniform sampler2D tex;
-        void main() {
-            float val = texture(tex, uv).r;
-            color = vec4(val, val, val, 1.0);
-        }";
+
+in vec2 vTexCoord;
+out vec4 FragColor;
+
+uniform sampler2D uTexture;
+
+void main()
+{
+    float pixel = texture(uTexture, vTexCoord).r;
+    FragColor = vec4(vec3(pixel), 1.0); // white for on-pixel, black for off
+}";
 
         int vertex = GL.CreateShader(ShaderType.VertexShader);
         GL.ShaderSource(vertex, vertexSource);

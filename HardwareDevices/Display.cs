@@ -70,7 +70,7 @@ class Display : VisualizableHardware, IDrawable
     public static Viewport CalculateChip8Viewport(int windowWidth, int windowHeight)
     {
         const int chip8Width = 64;
-        const int chip8Height = 32;
+        const int chip8Height = 48;
         float chipAspect = chip8Width / (float)chip8Height;
         float windowAspect = windowWidth / (float)windowHeight;
 

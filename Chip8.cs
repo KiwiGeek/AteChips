@@ -1,8 +1,6 @@
 ﻿using System.Diagnostics;
 using System.Linq;
 using AteChips.Interfaces;
-// ReSharper disable ForCanBeConvertedToForeach
-// ReSharper disable LoopCanBeConvertedToQuery
 
 namespace AteChips;
 class Chip8

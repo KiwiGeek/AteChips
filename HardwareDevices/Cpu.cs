@@ -95,7 +95,7 @@ public partial class Cpu : VisualizableHardware, ICpu
         StackPointer = 0x00;
         DelayTimer = 0x00;
         SoundTimer = 0x00;
-        ExecutionState = CpuExecutionState.Paused;
+        ExecutionState = CpuExecutionState.Running;
     }
 
     public void Step()
