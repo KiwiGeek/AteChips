@@ -39,6 +39,8 @@ public class ImGuiController
 
     public void RenderUi()
     {
+        if (!Settings.ShowImGui) { return; }
+
         RenderConsoleMenu();
 
         foreach (IVisualizable status in Machine.Instance.Visualizables
@@ -85,7 +87,7 @@ public class ImGuiController
          if (ImGuiNET.ImGui.Button("Reboot"))
          {
              Machine.Instance.Get<Cpu>().Reset();
-
+             Machine.Instance.Get<Cpu>().Run();
          }
 
          ImGuiNET.ImGui.SameLine();
@@ -101,7 +103,9 @@ public class ImGuiController
          {
              Machine.Instance.Reset();
              Machine.Instance.Get<Ram>().LoadRom(_fileBrowser.SelectedFile);
-             _fileBrowser.Reset(); // reset after loading
+             Machine.Instance.Get<Cpu>().Reset();
+             Machine.Instance.Get<Cpu>().Run();
+            _fileBrowser.Reset(); // reset after loading
          }
 
     }

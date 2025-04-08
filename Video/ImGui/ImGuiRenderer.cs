@@ -8,6 +8,7 @@ using OpenTK.Windowing.Desktop;
 using OpenTK.Windowing.GraphicsLibraryFramework;
 using System.Diagnostics;
 using ErrorCode = OpenTK.Graphics.OpenGL4.ErrorCode;
+using Vector4 = System.Numerics.Vector4;
 
 namespace AteChips.Video.ImGui;
 
@@ -38,7 +39,7 @@ public class ImGuiRenderer : IDisposable
     private int GLVersion;
     private bool CompatibilityProfile;
 
-    private readonly unsafe Window* _glfwWindow;
+    //private readonly unsafe Window* _glfwWindow;
 
     /// <summary>
     /// Constructs a new ImGuiController.
@@ -60,7 +61,7 @@ public class ImGuiRenderer : IDisposable
 
         IntPtr context = ImGuiNET.ImGui.CreateContext();
         ImGuiNET.ImGui.SetCurrentContext(context);
-        var io = ImGuiNET.ImGui.GetIO();
+        ImGuiIOPtr io = ImGuiNET.ImGui.GetIO();
         io.Fonts.AddFontDefault();
 
         io.BackendFlags |= ImGuiBackendFlags.RendererHasVtxOffset;
@@ -258,8 +259,8 @@ void main()
         io.MouseDown[3] = MouseState[MouseButton.Button4];
         io.MouseDown[4] = MouseState[MouseButton.Button5];
 
-        var screenPoint = new Vector2i((int)MouseState.X, (int)MouseState.Y);
-        var point = screenPoint;
+        Vector2i screenPoint = new Vector2i((int)MouseState.X, (int)MouseState.Y);
+        Vector2i point = screenPoint;
         io.MousePos = new System.Numerics.Vector2(point.X, point.Y);
 
         MouseScroll(MouseState.ScrollDelta);
@@ -273,7 +274,7 @@ void main()
             io.AddKeyEvent(TranslateKey(key), KeyboardState.IsKeyDown(key));
         }
 
-        foreach (var c in PressedChars)
+        foreach (char c in PressedChars)
         {
             io.AddInputCharacter(c);
         }
@@ -431,7 +432,7 @@ void main()
                     CheckGLError("Texture");
 
                     // We do _windowHeight - (int)clip.W instead of (int)clip.Y because gl has flipped Y when it comes to these coordinates
-                    var clip = pcmd.ClipRect;
+                    Vector4 clip = pcmd.ClipRect;
                     int fbWidth = (int)(io.DisplaySize.X * io.DisplayFramebufferScale.X);
                     int fbHeight = (int)(io.DisplaySize.Y * io.DisplayFramebufferScale.Y);
 

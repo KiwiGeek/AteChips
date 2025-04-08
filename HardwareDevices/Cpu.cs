@@ -13,9 +13,6 @@ public partial class Cpu : VisualizableHardware, ICpu
     // todo: adjustable hertz
     // todo: quirks mode
 
-    // frequencies (in Hz)
-    private const double CPU_HZ = 1400;
-    private const double TIMER_HZ = 60;
 
     public enum CpuExecutionState
     {
@@ -95,7 +92,7 @@ public partial class Cpu : VisualizableHardware, ICpu
         StackPointer = 0x00;
         DelayTimer = 0x00;
         SoundTimer = 0x00;
-        ExecutionState = CpuExecutionState.Running;
+        ExecutionState = CpuExecutionState.Paused;
     }
 
     public void Step()
@@ -149,34 +146,24 @@ public partial class Cpu : VisualizableHardware, ICpu
 
         if (_waitingForKey)
         {
-            // Step 1: Look for new key press
-            if (_pressedKey is null)
+            if (_pressedKey is null && _keyboard.FirstKeyPressedThisFrame.HasValue)
             {
-                for (byte i = 0; i < 16; i++)
-                {
-                    if (_keyboard.Keypad[i] == Keyboard.KeyState.Pressed)
-                    {
-                        _pressedKey = i;
-                        Registers[_waitingRegister] = i;
-                        break;
-                    }
-                }
-
-                return; // still waiting, don’t execute anything else
+                _pressedKey = _keyboard.FirstKeyPressedThisFrame.Value;
+                Registers[_waitingRegister] = _pressedKey.Value;
+                return;
             }
 
-            // Step 2: Wait for that specific key to be released
-            if (_keyboard.Keypad[_pressedKey.Value] == Keyboard.KeyState.Up)
+            if (_pressedKey is not null && _keyboard.Keypad[_pressedKey.Value] == Keyboard.KeyState.Up)
             {
                 _waitingForKey = false;
                 _pressedKey = null;
             }
 
-            return; // still waiting
+            return;
         }
 
         ushort instruction = Fetch();
-        Action command = Decode(instruction);
+        Action command = Decode(instruction); 
         command.Invoke();
     }
 

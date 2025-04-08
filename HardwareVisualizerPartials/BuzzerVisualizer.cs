@@ -99,7 +99,7 @@ public partial class Buzzer
         {
             System.Numerics.Vector2 cursor = ImGui.GetCursorScreenPos();
             System.Numerics.Vector2 size = new(400, 100);
-            var drawList = ImGui.GetWindowDrawList();
+            ImDrawListPtr drawList = ImGui.GetWindowDrawList();
 
             drawList.AddRect(cursor, cursor + size, ImGui.GetColorU32(ImGuiCol.FrameBg));
 

@@ -8,15 +8,6 @@ public class Machine
 {
     private readonly List<IHardware> _devices = [];
 
-    public IReadOnlyList<Hardware> Devices
-    {
-        get
-        {
-            if (_deviceListDirty) { RebuildCacheIfNeeded(); }
-            return _hardwareCache!;
-        }
-    }
-
     public IReadOnlyList<IVisualizable> Visualizables
     {
         get
@@ -55,7 +46,6 @@ public class Machine
 
     private void RebuildCacheIfNeeded()
     {
-        _hardwareCache = _devices.Cast<Hardware>().ToList();
         _visualizableCache = _devices.OfType<IVisualizable>().OrderBy(v => v.GetType().Name).ToList();
         _resettableCache = _devices.OfType<IResettable>().ToList();
         _updatableCache = _devices.OfType<IUpdatable>().OrderBy(u => u.UpdatePriority).ToList();
@@ -63,7 +53,6 @@ public class Machine
         _deviceListDirty = false;
     }
 
-    private IReadOnlyList<Hardware>? _hardwareCache;
     private IReadOnlyList<IVisualizable>? _visualizableCache;
     private IReadOnlyList<IResettable>? _resettableCache;
     private IReadOnlyList<IUpdatable>? _updatableCache;
@@ -75,7 +64,7 @@ public class Machine
     {
         FrameBuffer frameBuffer = Register<FrameBuffer>();
         Gpu gpu = Register(_ => new Gpu(frameBuffer));
-        Register(_ => new Display(gpu));
+        Register(_ => new Display(gpu, frameBuffer));
         Ram ram = Register<Ram>();
         Keyboard keyboard = Register<Keyboard>();
         Register(_ => new Buzzer(ram));

@@ -3,7 +3,7 @@ using AteChips.Interfaces;
 using OpenTK.Graphics.OpenGL4;
 
 namespace AteChips;
-class Gpu : Hardware
+public class Gpu : Hardware
 {
     private const int Width = 64;
     private const int Height = 32;
