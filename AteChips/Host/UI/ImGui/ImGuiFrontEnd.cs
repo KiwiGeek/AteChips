@@ -4,23 +4,23 @@ using AteChips.Shared.Settings;
 using ImGuiNET;
 using Vector2 = System.Numerics.Vector2;
 
-namespace AteChips.Host.UI;
-public class ImGuiController
+namespace AteChips.Host.UI.ImGui;
+public class ImGuiFrontEnd
 {
 
 
-    private readonly ImGuiFileBrowser _fileBrowser = new();
+    private readonly ImGuiFileDialog _fileBrowser = new();
 
-    public ImGuiController(int width, int height)
+    public ImGuiFrontEnd(int width, int height)
     {
-        ImGuiViewportPtr viewport = ImGui.GetMainViewport();
-        ImGui.SetNextWindowPos(viewport.Pos);
-        ImGui.SetNextWindowSize(viewport.Size);
-        ImGui.SetNextWindowViewport(viewport.ID);
+        ImGuiViewportPtr viewport = ImGuiNET.ImGui.GetMainViewport();
+        ImGuiNET.ImGui.SetNextWindowPos(viewport.Pos);
+        ImGuiNET.ImGui.SetNextWindowSize(viewport.Size);
+        ImGuiNET.ImGui.SetNextWindowViewport(viewport.ID);
 
-        ImGui.PushStyleVar(ImGuiStyleVar.WindowRounding, 0.0f);
-        ImGui.PushStyleVar(ImGuiStyleVar.WindowBorderSize, 0.0f);
-        ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, Vector2.Zero);
+        ImGuiNET.ImGui.PushStyleVar(ImGuiStyleVar.WindowRounding, 0.0f);
+        ImGuiNET.ImGui.PushStyleVar(ImGuiStyleVar.WindowBorderSize, 0.0f);
+        ImGuiNET.ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, Vector2.Zero);
 
         ImGuiWindowFlags hostWindowFlags = ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoCollapse |
                                            ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoMove |
@@ -28,12 +28,12 @@ public class ImGuiController
                                            ImGuiWindowFlags.NoBackground | ImGuiWindowFlags.NoDecoration |
                                            ImGuiWindowFlags.MenuBar | ImGuiWindowFlags.NoSavedSettings;
 
-        ImGui.Begin("DockSpaceHost", hostWindowFlags);
-        ImGui.PopStyleVar(3);
+        ImGuiNET.ImGui.Begin("DockSpaceHost", hostWindowFlags);
+        ImGuiNET.ImGui.PopStyleVar(3);
 
-        // Create dockspace here
-        ImGui.DockSpace(ImGui.GetID("MyDockSpace"), Vector2.Zero, ImGuiDockNodeFlags.None);
-        ImGui.End();
+        // Create dock space here
+        ImGuiNET.ImGui.DockSpace(ImGuiNET.ImGui.GetID("MyDockSpace"), Vector2.Zero, ImGuiDockNodeFlags.None);
+        ImGuiNET.ImGui.End();
 
         // RebuildFontAtlas();
     }
@@ -47,16 +47,16 @@ public class ImGuiController
         foreach (IVisualizable status in Chip8Machine.Instance.Visualizables
                      .OrderBy(visual => visual.GetType().Name).ToList())
         {
-            if (status.VisualShown) { status.RenderVisual(); }
+            if (status.VisualShown) { status.Visualize(); }
         }
 
     }
 
     private void RenderConsoleMenu()
     {
-        Vector2 topLeft = ImGui.GetMainViewport().Pos;
+        Vector2 topLeft = ImGuiNET.ImGui.GetMainViewport().Pos;
 
-        ImGui.SetNextWindowPos(topLeft, ImGuiCond.Always);
+        ImGuiNET.ImGui.SetNextWindowPos(topLeft, ImGuiCond.Always);
 
          ImGuiWindowFlags flags =
              ImGuiWindowFlags.NoTitleBar |
@@ -67,38 +67,38 @@ public class ImGuiController
              ImGuiWindowFlags.NoCollapse |
              ImGuiWindowFlags.NoDocking;
 
-        ImGui.Begin("Debug Console", flags);
+         ImGuiNET.ImGui.Begin("Debug Console", flags);
          // Top button bar
          foreach (IVisualizable visual in Chip8Machine.Instance.Visualizables)
          {
-             if (ToggleButton(visual.GetType().Name, visual.VisualShown))
+             if (ImGuiWidgets.ToggleButton(visual.GetType().Name, visual.VisualShown))
              {
                  visual.VisualShown ^= true;
              }
 
-            ImGui.SameLine();
+             ImGuiNET.ImGui.SameLine();
          }
 
-         if (ImGui.Button("Reset"))
+         if (ImGuiNET.ImGui.Button("Reset"))
          {
              Chip8Machine.Instance.Reset();
          }
-        ImGui.SameLine();
+         ImGuiNET.ImGui.SameLine();
 
-         if (ImGui.Button("Reboot"))
+         if (ImGuiNET.ImGui.Button("Reboot"))
          {
              Chip8Machine.Instance.Get<Cpu>().Reset();
              Chip8Machine.Instance.Get<Cpu>().Run();
          }
 
-        ImGui.SameLine();
+         ImGuiNET.ImGui.SameLine();
 
-         if (ImGui.Button("Open ROM"))
+         if (ImGuiNET.ImGui.Button("Open ROM"))
          {
              _fileBrowser.Open();
          }
          _fileBrowser.Render();
-        ImGui.End();
+         ImGuiNET.ImGui.End();
 
          if (_fileBrowser.SelectedFile != null)
          {
@@ -111,17 +111,6 @@ public class ImGuiController
 
     }
 
-    public static bool ToggleButton(string label, bool active)
-    {
-        ImGui.PushStyleColor(ImGuiCol.Button,
-            active
-                ? new System.Numerics.Vector4(0.3f, 0.7f, 0.3f, 1.0f)
-                : new System.Numerics.Vector4(0.4f, 0.4f, 0.4f, 1.0f));
-
-        bool clicked = ImGui.Button(label);
-        ImGui.PopStyleColor();
-
-        return clicked;
-    }
+    
 
 }

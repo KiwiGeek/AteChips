@@ -10,9 +10,9 @@ using System.Diagnostics;
 using ErrorCode = OpenTK.Graphics.OpenGL4.ErrorCode;
 using Vector4 = System.Numerics.Vector4;
 
-namespace AteChips.Host.UI;
+namespace AteChips.Host.UI.ImGui;
 
-public class ImGuiRenderer : IDisposable
+public class ImGuiBackend : IDisposable
 {
     private bool _frameBegun;
 
@@ -44,7 +44,7 @@ public class ImGuiRenderer : IDisposable
     /// <summary>
     /// Constructs a new ImGuiController.
     /// </summary>
-    public unsafe ImGuiRenderer(GameWindow window)
+    public unsafe ImGuiBackend(GameWindow window)
     {
         _window = window;
         GLFW.GetFramebufferSize(window.WindowPtr, out _windowWidth, out _windowHeight);
@@ -59,9 +59,9 @@ public class ImGuiRenderer : IDisposable
 
         CompatibilityProfile = (GL.GetInteger((GetPName)All.ContextProfileMask) & (int)All.ContextCompatibilityProfileBit) != 0;
 
-        nint context = ImGui.CreateContext();
-        ImGui.SetCurrentContext(context);
-        ImGuiIOPtr io = ImGui.GetIO();
+        nint context = ImGuiNET.ImGui.CreateContext();
+        ImGuiNET.ImGui.SetCurrentContext(context);
+        ImGuiIOPtr io = ImGuiNET.ImGui.GetIO();
         io.Fonts.AddFontDefault();
 
         io.BackendFlags |= ImGuiBackendFlags.RendererHasVtxOffset;
@@ -72,7 +72,7 @@ public class ImGuiRenderer : IDisposable
 
         SetPerFrameImGuiData(1f / 60f);
 
-        ImGui.NewFrame();
+        ImGuiNET.ImGui.NewFrame();
         _frameBegun = true;
     }
 
@@ -166,7 +166,7 @@ void main()
     /// </summary>
     public void RecreateFontDeviceTexture()
     {
-        ImGuiIOPtr io = ImGui.GetIO();
+        ImGuiIOPtr io = ImGuiNET.ImGui.GetIO();
         io.Fonts.GetTexDataAsRGBA32(out nint pixels, out int width, out int height, out int bytesPerPixel);
 
         int mips = (int)Math.Floor(Math.Log(Math.Max(width, height), 2));
@@ -208,8 +208,8 @@ void main()
         if (_frameBegun)
         {
             _frameBegun = false;
-            ImGui.Render();
-            RenderImDrawData(ImGui.GetDrawData());
+            ImGuiNET.ImGui.Render();
+            RenderImDrawData(ImGuiNET.ImGui.GetDrawData());
         }
     }
 
@@ -220,14 +220,14 @@ void main()
     {
         if (_frameBegun)
         {
-            ImGui.Render();
+            ImGuiNET.ImGui.Render();
         }
 
         SetPerFrameImGuiData(deltaSeconds);
         UpdateImGuiInput(wnd);
 
         _frameBegun = true;
-        ImGui.NewFrame();
+        ImGuiNET.ImGui.NewFrame();
     }
 
     /// <summary>
@@ -236,7 +236,7 @@ void main()
     /// </summary>
     private unsafe void SetPerFrameImGuiData(double deltaSeconds)
     {
-        ImGuiIOPtr io = ImGui.GetIO();
+        ImGuiIOPtr io = ImGuiNET.ImGui.GetIO();
 
         GLFW.GetFramebufferSize(_window.WindowPtr, out int fbWidth, out int fbHeight);
         io.DisplaySize = new System.Numerics.Vector2(fbWidth, fbHeight);
@@ -248,7 +248,7 @@ void main()
 
     private unsafe void UpdateImGuiInput(GameWindow wnd)
     {
-        ImGuiIOPtr io = ImGui.GetIO();
+        ImGuiIOPtr io = ImGuiNET.ImGui.GetIO();
 
         MouseState MouseState = wnd.MouseState;
         KeyboardState KeyboardState = wnd.KeyboardState;
@@ -293,7 +293,7 @@ void main()
 
     internal void MouseScroll(Vector2 offset)
     {
-        ImGuiIOPtr io = ImGui.GetIO();
+        ImGuiIOPtr io = ImGuiNET.ImGui.GetIO();
 
         io.MouseWheel = offset.Y;
         io.MouseWheelH = offset.X;
@@ -342,12 +342,12 @@ void main()
 
         if (GLVersion <= 310 || CompatibilityProfile)
         {
-            GL.PolygonMode(MaterialFace.Front, PolygonMode.Fill);
-            GL.PolygonMode(MaterialFace.Back, PolygonMode.Fill);
+            GL.PolygonMode(TriangleFace.Front, PolygonMode.Fill);
+            GL.PolygonMode(TriangleFace.Back, PolygonMode.Fill);
         }
         else
         {
-            GL.PolygonMode(MaterialFace.FrontAndBack, PolygonMode.Fill);
+            GL.PolygonMode(TriangleFace.FrontAndBack, PolygonMode.Fill);
         }
 
         // Bind the element buffer (thru the VAO) so that we can resize it.
@@ -381,7 +381,7 @@ void main()
         }
 
         // Setup orthographic projection matrix into our constant buffer
-        ImGuiIOPtr io = ImGui.GetIO();
+        ImGuiIOPtr io = ImGuiNET.ImGui.GetIO();
         Matrix4 mvp = Matrix4.CreateOrthographicOffCenter(
             0.0f,
             _windowWidth,
@@ -480,12 +480,12 @@ void main()
         if (prevScissorTestEnabled) GL.Enable(EnableCap.ScissorTest); else GL.Disable(EnableCap.ScissorTest);
         if (GLVersion <= 310 || CompatibilityProfile)
         {
-            GL.PolygonMode(MaterialFace.Front, (PolygonMode)prevPolygonMode[0]);
-            GL.PolygonMode(MaterialFace.Back, (PolygonMode)prevPolygonMode[1]);
+            GL.PolygonMode(TriangleFace.Front, (PolygonMode)prevPolygonMode[0]);
+            GL.PolygonMode(TriangleFace.Back, (PolygonMode)prevPolygonMode[1]);
         }
         else
         {
-            GL.PolygonMode(MaterialFace.FrontAndBack, (PolygonMode)prevPolygonMode[0]);
+            GL.PolygonMode(TriangleFace.FrontAndBack, (PolygonMode)prevPolygonMode[0]);
         }
     }
 

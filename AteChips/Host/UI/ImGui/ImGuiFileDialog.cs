@@ -5,8 +5,8 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 
-namespace AteChips.Host.UI;
-public class ImGuiFileBrowser
+namespace AteChips.Host.UI.ImGui;
+public class ImGuiFileDialog
 {
     public string CurrentDirectory { get; private set; } = Directory.GetCurrentDirectory();
     public string? SelectedFile { get; private set; }
@@ -97,17 +97,17 @@ public class ImGuiFileBrowser
         }
 
 
-        if (ImGui.Begin(title, ref isOpen, ImGuiWindowFlags.NoCollapse))
+        if (ImGuiNET.ImGui.Begin(title, ref isOpen, ImGuiWindowFlags.NoCollapse))
         {
 
-            if (ImGui.Button("Desktop"))
+            if (ImGuiNET.ImGui.Button("Desktop"))
             {
                 CurrentDirectory = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
                 RefreshEntries();
             }
-            ImGui.SameLine();
+            ImGuiNET.ImGui.SameLine();
 
-            if (ImGui.Button("Downloads"))
+            if (ImGuiNET.ImGui.Button("Downloads"))
             {
                 string downloads = Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
@@ -119,53 +119,53 @@ public class ImGuiFileBrowser
                     RefreshEntries();
                 }
             }
-            ImGui.SameLine();
+            ImGuiNET.ImGui.SameLine();
 
-            if (ImGui.Button("App Folder"))
+            if (ImGuiNET.ImGui.Button("App Folder"))
             {
                 CurrentDirectory = AppContext.BaseDirectory;
                 RefreshEntries();
             }
 
-            ImGui.SameLine();
+            ImGuiNET.ImGui.SameLine();
 
-            ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X);
-            if (ImGui.BeginCombo("##Drives", CurrentDirectory[..3])) // show root (e.g. "C:\")
+            ImGuiNET.ImGui.SetNextItemWidth(ImGuiNET.ImGui.GetContentRegionAvail().X);
+            if (ImGuiNET.ImGui.BeginCombo("##Drives", CurrentDirectory[..3])) // show root (e.g. "C:\")
             {
                 foreach ((string root, string label) in _cachedDrives)
                 {
-                    if (ImGui.Selectable(label))
+                    if (ImGuiNET.ImGui.Selectable(label))
                     {
                         CurrentDirectory = root;
                         RefreshEntries();
                     }
                 }
-                ImGui.EndCombo();
+                ImGuiNET.ImGui.EndCombo();
             }
 
 
-            ImGui.Text($"Current directory: {CurrentDirectory}");
-            ImGui.Separator();
+            ImGuiNET.ImGui.Text($"Current directory: {CurrentDirectory}");
+            ImGuiNET.ImGui.Separator();
 
-            if (ImGui.BeginChild("FileList", new Vector2(-1, -23), ImGuiChildFlags.Borders,
+            if (ImGuiNET.ImGui.BeginChild("FileList", new Vector2(-1, -23), ImGuiChildFlags.Borders,
                     ImGuiWindowFlags.AlwaysVerticalScrollbar))
             {
                 for (int i = 0; i < _entries.Count; i++)
                 {
                     bool selected = i == _selectedIndex;
-                    if (ImGui.Selectable(_entries[i], selected))
+                    if (ImGuiNET.ImGui.Selectable(_entries[i], selected))
                     {
                         _selectedIndex = i;
                     }
 
                     // Double-click to activate
-                    if (ImGui.IsItemHovered() && ImGui.IsMouseDoubleClicked(0))
+                    if (ImGuiNET.ImGui.IsItemHovered() && ImGuiNET.ImGui.IsMouseDoubleClicked(0))
                     {
                         ActivateEntry(_entries[i]);
                     }
                 }
             }
-            ImGui.EndChild();
+            ImGuiNET.ImGui.EndChild();
 
             if (_selectedIndex >= 0 && _selectedIndex < _entries.Count)
             {
@@ -173,22 +173,22 @@ public class ImGuiFileBrowser
                 string fullPath = Path.Combine(CurrentDirectory, selectedName);
                 if (File.Exists(fullPath))
                 {
-                    if (ImGui.Button("Open"))
+                    if (ImGuiNET.ImGui.Button("Open"))
                     {
                         SelectedFile = fullPath;
                         isOpen = false;
                     }
-                    ImGui.SameLine();
+                    ImGuiNET.ImGui.SameLine();
                 }
             }
 
-            if (ImGui.Button("Cancel"))
+            if (ImGuiNET.ImGui.Button("Cancel"))
             {
                 isOpen = false;
                 SelectedFile = null;
             }
         }
-        ImGui.End();
+        ImGuiNET.ImGui.End();
         IsOpen = isOpen;
     }
 

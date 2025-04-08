@@ -2,8 +2,10 @@
 using AteChips.Shared.Interfaces;
 
 namespace AteChips.Core.Framebuffer;
-public class FrameBuffer : Hardware, IResettable
+public class FrameBuffer : IHardware, IResettable
 {
+    public string Name => GetType().Name;
+
     private const int DEFAULT_WIDTH = 64;
     private const int DEFAULT_HEIGHT = 32;
 

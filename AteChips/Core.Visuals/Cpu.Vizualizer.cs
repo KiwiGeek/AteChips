@@ -17,7 +17,7 @@ public partial class Cpu
 
     private bool firstOpen = true;
 
-    public override void RenderVisual()
+    public override void Visualize()
     {
 
         if (firstOpen)

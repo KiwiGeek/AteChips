@@ -7,7 +7,7 @@ public partial class Buzzer
 
     private float[] _waveformPreview = [];
 
-    public override void RenderVisual()
+    public override void Visualize()
     {
 
         if (_waveformPreview.Length == 0)

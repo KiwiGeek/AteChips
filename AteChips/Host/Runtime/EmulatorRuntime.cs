@@ -1,5 +1,7 @@
 ﻿using System.Diagnostics;
 using System.Linq;
+using AteChips.Core.Framebuffer;
+using AteChips.Host.Video;
 using AteChips.Shared.Interfaces;
 
 namespace AteChips.Host.Runtime;
@@ -12,9 +14,9 @@ class EmulatorRuntime
 
     public EmulatorRuntime(Chip8Machine emulatedMachine)
     {
-        _display = emulatedMachine.Get<Display>();
+        _display = new Display(emulatedMachine.Get<FrameBuffer>());
 
-        _drawables = emulatedMachine.Drawables.ToArray();
+        _drawables = [_display];
         _singleDrawable = _drawables.Length == 1;
 
         _updatables = emulatedMachine.Updatables.ToArray();

@@ -2,7 +2,7 @@
 
 public interface IVisualizable
 {
-    void RenderVisual();
+    void Visualize();
 
     bool VisualShown { get; set; }
 }

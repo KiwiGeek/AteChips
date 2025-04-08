@@ -42,14 +42,6 @@ public class Chip8Machine
         }
     }
 
-    public IReadOnlyList<IDrawable> Drawables
-    {
-        get
-        {
-            if (_deviceListDirty) { RebuildCacheIfNeeded(); }
-            return _drawableCache!;
-        }
-    }
 
     private void RebuildCacheIfNeeded()
     {
@@ -57,7 +49,6 @@ public class Chip8Machine
         _resettableCache = _devices.OfType<IResettable>().ToList();
         _updatableCache = _devices.OfType<IUpdatable>().OrderBy(u => u.UpdatePriority).ToList();
         _drawableCache = _devices.OfType<IDrawable>().ToList();
-        _deviceListDirty = false;
     }
 
     private IReadOnlyList<IVisualizable>? _visualizableCache;
@@ -70,15 +61,13 @@ public class Chip8Machine
     private Chip8Machine()
     {
         FrameBuffer frameBuffer = Register<FrameBuffer>();
-        Gpu gpu = Register(_ => new Gpu(frameBuffer));
-        Register(_ => new Display(gpu, frameBuffer));
         Ram ram = Register<Ram>();
         Keyboard keyboard = Register<Keyboard>();
         Register(_ => new Buzzer(ram));
         Register(_ => new Cpu(frameBuffer, keyboard, ram));
     }
 
-    public T Register<T>() where T : Hardware
+    public T Register<T>() where T : IHardware
     {
         T device = (T)Activator.CreateInstance(typeof(T))!;
         _devices.Add(device);
@@ -86,19 +75,19 @@ public class Chip8Machine
         return device;
     }
 
-    public T Register<T>(Func<Chip8Machine, T> factory) where T : Hardware
+    public T Register<T>(Func<Chip8Machine, T> factory) where T : IHardware
     {
         T instance = factory(this);
         _devices.Add(instance);
         _deviceListDirty = true;
         return instance;
     }
-    public T Get<T>() where T : Hardware
+    public T Get<T>() where T : IHardware
     {
         return _devices.OfType<T>().Single();
     }
 
-    public bool TryGet<T>(out T? result) where T : Hardware
+    public bool TryGet<T>(out T? result) where T : IHardware
     {
         result = _devices.OfType<T>().FirstOrDefault();
         return result != null;

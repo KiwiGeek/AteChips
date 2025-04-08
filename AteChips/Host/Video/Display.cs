@@ -8,18 +8,17 @@ using OpenTK.Windowing.GraphicsLibraryFramework;
 using ClearBufferMask = OpenTK.Graphics.OpenGL4.ClearBufferMask;
 using GL = OpenTK.Graphics.OpenGL4.GL;
 using AteChips.Core.Framebuffer;
-using AteChips.Host.UI;
 using AteChips.Shared.Interfaces;
 using AteChips.Shared.Settings;
-using AteChips.Host.Video;
+using OpenTK.Graphics.OpenGL4;
+using AteChips.Host.UI.ImGui;
 
-namespace AteChips;
+namespace AteChips.Host.Video;
 
-partial class Display : VisualizableHardware, IDrawable
+partial class Display : IVisualizable, IDrawable
 {
-    private readonly ImGuiController _imgui;
-    private readonly ImGuiRenderer _imGuiRenderer;
-    private readonly Gpu _gpu;
+    private readonly ImGuiFrontEnd _imgui;
+    private readonly ImGuiBackend _imGuiRenderer;
     private readonly FrameBuffer _frameBuffer;
 
 
@@ -27,6 +26,9 @@ partial class Display : VisualizableHardware, IDrawable
     private Vector2i _savedClientSize;
     private Vector2i _savedPosition;
 
+    private int _texture;
+    private int _vao, _vbo, _shader;
+    private readonly byte[] _textureBuffer = new byte[64 * 32]; // assuming CHIP-8 res
 
 
     public GameWindow Window { get; }
@@ -40,7 +42,22 @@ partial class Display : VisualizableHardware, IDrawable
     private const double MESSAGE_PUMP_INTERVAL = 1.0 / MESSAGE_PUMP_HZ;
     private const float PIXEL_ASPECT_RATIO = 1.5f;
 
-    public Display(Gpu gpu, FrameBuffer frameBuffer)
+    private void InitializeGL(int windowWidth, int windowHeight)
+    {
+        _texture = GL.GenTexture();
+        GL.BindTexture(TextureTarget.Texture2D, _texture);
+
+        GL.TexImage2D(TextureTarget.Texture2D, 0, PixelInternalFormat.R8, 64, 32, 0, PixelFormat.Red, PixelType.UnsignedByte, nint.Zero);
+
+        GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)TextureMinFilter.Nearest);
+        GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)TextureMagFilter.Nearest);
+
+        _shader = CreateShader();
+        SetupFullscreenQuad();
+    }
+
+
+    public Display(FrameBuffer frameBuffer)
     {
         NativeWindowSettings nativeWindowSettings = new()
         {
@@ -57,14 +74,13 @@ partial class Display : VisualizableHardware, IDrawable
         Window.Resize += OnResize;
         Window.Closing += OnWindowClosing;
 
-        _gpu = gpu; // Assuming Gpu is defined elsewhere
-
-        _imGuiRenderer = new ImGuiRenderer(Window);
+        _imGuiRenderer = new ImGuiBackend(Window);
 
         GL.ClearColor(0f, 0f, 0f, 1f);
-        _imgui = new ImGuiController(Window.Size.X, Window.Size.Y);
+        _imgui = new ImGuiFrontEnd(Window.Size.X, Window.Size.Y);
         _frameBuffer = frameBuffer;
-        _gpu.Init(Window.Size.X, Window.Size.Y);
+
+        InitializeGL(Window.Size.X, Window.Size.Y);
     }
 
     public struct Viewport
@@ -112,7 +128,7 @@ partial class Display : VisualizableHardware, IDrawable
 
         // calculate aspect-ratio corrected viewport
         Viewport viewport = CalculateChip8Viewport(fbWidth, fbHeight);
-        _gpu.Render(args.Time, viewport.X, viewport.Y, viewport.Width, viewport.Height);
+        RenderFramebuffer(viewport.X, viewport.Y, viewport.Width, viewport.Height);
 
         if (Settings.ShowImGui)
         {
@@ -125,8 +141,27 @@ partial class Display : VisualizableHardware, IDrawable
         Window.SwapBuffers();
     }
 
+    private void RenderFramebuffer(int x, int y, int width, int height)
+    {
+        ConvertFramebufferToBytes(_frameBuffer.Pixels, _textureBuffer);
 
+        GL.BindTexture(TextureTarget.Texture2D, _texture);
+        GL.TexSubImage2D(TextureTarget.Texture2D, 0, 0, 0, 64, 32, PixelFormat.Red, PixelType.UnsignedByte, _textureBuffer);
 
+        GL.Viewport(x, y, width, height);
+
+        GL.UseProgram(_shader);
+        GL.BindVertexArray(_vao);
+        GL.DrawArrays(PrimitiveType.Triangles, 0, 6);
+    }
+
+    private void ConvertFramebufferToBytes(bool[] source, byte[] target)
+    {
+        for (int i = 0; i < source.Length; i++)
+        {
+            target[i] = source[i] ? (byte)255 : (byte)0;
+        }
+    }
 
     public void ToggleFullScreen()
     {
@@ -185,5 +220,87 @@ partial class Display : VisualizableHardware, IDrawable
     {
         Environment.Exit(0); // Ensures full app shutdown
     }
+
+    private void SetupFullscreenQuad()
+    {
+        float[] vertices = {
+            //   X      Y       U     V
+            -1f, -1f,   0f, 1f,  // bottom-left
+            1f, -1f,   1f, 1f,  // bottom-right
+            1f,  1f,   1f, 0f,  // top-right
+
+            -1f, -1f,   0f, 1f,  // bottom-left
+            1f,  1f,   1f, 0f,  // top-right
+            -1f,  1f,   0f, 0f   // top-left
+        };
+
+        _vao = GL.GenVertexArray();
+        _vbo = GL.GenBuffer();
+
+        GL.BindVertexArray(_vao);
+        GL.BindBuffer(BufferTarget.ArrayBuffer, _vbo);
+        GL.BufferData(BufferTarget.ArrayBuffer, vertices.Length * sizeof(float), vertices, BufferUsageHint.StaticDraw);
+
+        // Position (location = 0)
+        GL.VertexAttribPointer(0, 2, VertexAttribPointerType.Float, false, 4 * sizeof(float), 0);
+        GL.EnableVertexAttribArray(0);
+
+        // TexCoord (location = 1)
+        GL.VertexAttribPointer(1, 2, VertexAttribPointerType.Float, false, 4 * sizeof(float), 2 * sizeof(float));
+        GL.EnableVertexAttribArray(1);
+    }
+
+    private int CreateShader()
+    {
+        string vertexSource = @"
+        #version 330 core
+
+layout(location = 0) in vec2 aPosition;
+layout(location = 1) in vec2 aTexCoord;
+
+out vec2 vTexCoord;
+
+void main()
+{
+    gl_Position = vec4(aPosition, 0.0, 1.0);
+    vTexCoord = aTexCoord;
+}";
+
+        string fragmentSource = @"
+        #version 330 core
+
+in vec2 vTexCoord;
+out vec4 FragColor;
+
+uniform sampler2D uTexture;
+
+void main()
+{
+    float pixel = texture(uTexture, vTexCoord).r;
+    FragColor = vec4(vec3(pixel), 1.0); // white for on-pixel, black for off
+}";
+
+        int vertex = GL.CreateShader(ShaderType.VertexShader);
+        GL.ShaderSource(vertex, vertexSource);
+        GL.CompileShader(vertex);
+        Console.WriteLine(GL.GetShaderInfoLog(vertex));
+
+        int fragment = GL.CreateShader(ShaderType.FragmentShader);
+        GL.ShaderSource(fragment, fragmentSource);
+        GL.CompileShader(fragment);
+        Console.WriteLine(GL.GetShaderInfoLog(fragment));
+
+        int program = GL.CreateProgram();
+        GL.AttachShader(program, vertex);
+        GL.AttachShader(program, fragment);
+        GL.LinkProgram(program);
+        Console.WriteLine(GL.GetProgramInfoLog(program));
+
+        GL.DeleteShader(vertex);
+        GL.DeleteShader(fragment);
+
+        return program;
+    }
+
 
 }

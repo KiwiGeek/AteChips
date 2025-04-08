@@ -1,17 +1,19 @@
-﻿using AteChips.Host.UI;
+﻿using AteChips.Host.UI.ImGui;
 using AteChips.Shared.Settings;
 using ImGuiNET;
-using System.Numerics;
 
-namespace AteChips;
+namespace AteChips.Host.Video;
+
 public partial class Display
 {
 
-    public override void RenderVisual()
+    public bool VisualShown { get; set; } = false;
+
+    public void Visualize()
     {
         ImGui.Begin("Visual Settings##Main", ImGuiWindowFlags.NoDocking);
 
-        ImGuiHelpers.Checkbox("Maintain Aspect Ratio", () => Settings.MaintainAspectRatio,
+        ImGuiWidgets.Checkbox("Maintain Aspect Ratio", () => Settings.MaintainAspectRatio,
             value => Settings.MaintainAspectRatio = value);
 
         //PhosphorColor();
