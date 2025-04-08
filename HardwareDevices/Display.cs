@@ -1,5 +1,4 @@
 ﻿using AteChips.Video.ImGui;
-using OpenTK.Graphics.OpenGL4;
 using OpenTK.Mathematics;
 using OpenTK.Windowing.Common;
 using OpenTK.Windowing.Desktop;
@@ -9,6 +8,9 @@ using GameWindow = OpenTK.Windowing.Desktop.GameWindow;
 using IDrawable = AteChips.Interfaces.IDrawable;
 using OpenTK.Windowing.GraphicsLibraryFramework;
 using System.Diagnostics;
+using OpenTK.Graphics.ES20;
+using ClearBufferMask = OpenTK.Graphics.OpenGL4.ClearBufferMask;
+using GL = OpenTK.Graphics.OpenGL4.GL;
 
 namespace AteChips;
 
@@ -58,11 +60,54 @@ class Display : VisualizableHardware, IDrawable
         _gpu.Init(_window.Size.X, _window.Size.Y);
     }
 
+    public struct Viewport
+    {
+        public int X, Y, Width, Height;
+        public Viewport(int x, int y, int width, int height)
+            => (X, Y, Width, Height) = (x, y, width, height);
+    }
+
+    public static Viewport CalculateChip8Viewport(int windowWidth, int windowHeight)
+    {
+        const int chip8Width = 64;
+        const int chip8Height = 32;
+        float chipAspect = chip8Width / (float)chip8Height;
+        float windowAspect = windowWidth / (float)windowHeight;
+
+        if (!Settings.MaintainAspectRatio)
+        {
+            return new Viewport(0, 0, windowWidth, windowHeight);
+        }
+
+        if (windowAspect > chipAspect)
+        {
+            // Window is wider than CHIP-8
+            int height = windowHeight;
+            int width = (int)(height * chipAspect);
+            int x = (windowWidth - width) / 2;
+            return new Viewport(x, 0, width, height);
+        }
+        else
+        {
+            // Window is taller or same as CHIP-8
+            int width = windowWidth;
+            int height = (int)(width / chipAspect);
+            int y = (windowHeight - height) / 2;
+            return new Viewport(0, y, width, height);
+        }
+    }
+
+
     private unsafe void OnRenderFrame(FrameEventArgs args)
     {
         GL.Clear(ClearBufferMask.ColorBufferBit);
         GLFW.GetFramebufferSize(_window.WindowPtr, out int fbWidth, out int fbHeight);
-        _gpu.Render(0, fbWidth, fbHeight);
+
+        // calculate aspect-ratio corrected viewport
+        var viewport = CalculateChip8Viewport(fbWidth, fbHeight);
+        _gpu.Render(args.Time, viewport.X, viewport.Y, viewport.Width, viewport.Height);
+
+        GL.Viewport(0, 0, fbWidth, fbHeight);
         _imGuiRenderer.Update(_window, args.Time);
         _imgui.RenderUi();
         _imGuiRenderer.Render();
@@ -71,6 +116,41 @@ class Display : VisualizableHardware, IDrawable
     }
 
 
+    private bool _fullscreen = false;
+    private Vector2i _savedClientSize;
+    private Vector2i _savedPosition;
+
+
+    public void ToggleFullScreen()
+    {
+
+        if (_fullscreen)
+        {
+            _window.WindowBorder = WindowBorder.Resizable;
+            _window.WindowState = WindowState.Normal;
+            // Restore client size and position
+            _window.ClientSize = _savedClientSize;
+            _window.Location = _savedPosition;
+            _fullscreen = false;
+        }
+        else
+        {
+
+            _savedClientSize = _window.ClientSize;
+            _savedPosition = _window.Location;
+
+            var monitor = _window.CurrentMonitor;
+            var width = monitor.HorizontalResolution;
+            var height = monitor.VerticalResolution;
+
+            _window.WindowBorder = WindowBorder.Hidden;
+            _window.WindowState = WindowState.Normal;
+            _window.Location = new Vector2i(0, 0);
+            _window.Size = new Vector2i(monitor.HorizontalResolution, monitor.VerticalResolution); 
+            _fullscreen = true;
+        }
+
+    }
 
     public void Draw(double delta)
     {
@@ -94,8 +174,8 @@ class Display : VisualizableHardware, IDrawable
 
     private void OnResize(ResizeEventArgs e)
     {
-        GL.Viewport(0, 0, _window.Size.X, _window.Size.Y);
-        //_imgui.WindowResized(_window.Size.X, _window.Size.Y);
+        GL.Viewport(0, 0, e.Width, e.Height);
+        _imGuiRenderer.WindowResized(e.Width, e.Height);
     }
 
     private void OnUnload()

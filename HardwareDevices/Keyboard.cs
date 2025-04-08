@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using AteChips.Interfaces;
 using OpenTK.Windowing.Desktop;
 using OpenTK.Windowing.GraphicsLibraryFramework;
@@ -10,7 +11,7 @@ public class Keyboard : Hardware, IResettable, IKeyboard
 
     private double _cycleAccumulator = 0;
 
-    private const double ClockRateHz = 700_000;
+    private const double ClockRateHz = 60;
     private const double SecondsPerCycle = 1.0 / ClockRateHz;
 
     public enum KeyState
@@ -23,6 +24,7 @@ public class Keyboard : Hardware, IResettable, IKeyboard
 
     private readonly bool[] _lastKeyStates = new bool[16];
     public KeyState[] Keypad { get; } = new KeyState[16];
+    private KeyboardState _keyboardState;
 
 
     public bool Update(double delta)
@@ -32,16 +34,18 @@ public class Keyboard : Hardware, IResettable, IKeyboard
 
         if (_cycleAccumulator >= SecondsPerCycle)
         {
+
             GameWindow window = Machine.Instance.Get<Display>().Window;
             KeyboardState? keyboard = window.KeyboardState;
 
+
             bool alt = keyboard.IsKeyDown(Keys.LeftAlt) || keyboard.IsKeyDown(Keys.RightAlt);
-            bool enter = keyboard.IsKeyDown(Keys.Enter);
-            if (alt && enter && !keyboard.WasKeyDown(Keys.Enter))
+            bool enterPressed = keyboard.IsKeyDown(Keys.Enter) && !_keyboardState.IsKeyDown(Keys.Enter);
+
+            if (alt && enterPressed)
             {
                 // Toggle fullscreen here if needed
-                // todo: fullscreen with OpenTK
-                throw new NotImplementedException("need to do fullscreen still");
+                Machine.Instance.Get<Display>().ToggleFullScreen();
             }
 
             if (keyboard.IsKeyDown(Keys.GraveAccent) && !keyboard.WasKeyDown(Keys.GraveAccent))
@@ -79,6 +83,8 @@ public class Keyboard : Hardware, IResettable, IKeyboard
             }
 
             _cycleAccumulator = 0;
+
+            _keyboardState = keyboard.GetSnapshot();
         }
 
         // todo: split chip8 keypad and UI keyboard inputs.

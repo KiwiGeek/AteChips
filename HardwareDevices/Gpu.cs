@@ -46,16 +46,16 @@ class Gpu : Hardware
         // Future: cycle-based GPU logic (timing, scanlines, etc.)
     }
 
-    public void Render(double delta, int windowWidth, int windowHeight)
+    public void Render(double delta, int x, int y, int width, int height)
     {
         ConvertFramebufferToBytes(_frameBuffer.Pixels, _textureBuffer);
 
         GL.BindTexture(TextureTarget.Texture2D, _texture);
         GL.TexSubImage2D(TextureTarget.Texture2D, 0, 0, 0, Width, Height, PixelFormat.Red, PixelType.UnsignedByte, _textureBuffer);
 
-        GL.Viewport(0, 0, windowWidth, windowHeight);
-        _windowWidth = windowWidth;
-        _windowHeight = windowHeight;
+        GL.Viewport(x, y, width, height); // ✅ use the aspect-aware viewport
+        _windowWidth = width;
+        _windowHeight = height;
 
         DrawFullscreenQuad();
     }
