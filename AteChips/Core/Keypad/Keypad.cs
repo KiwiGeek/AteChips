@@ -1,9 +1,8 @@
-﻿using AteChips.Shared.Interfaces;
-using OpenTK.Windowing.GraphicsLibraryFramework;
+﻿using AteChips.Core.Shared.Interfaces;
 
-namespace AteChips.Core.Keypad;
+namespace AteChips.Core;
 
-public class Keyboard : IHardware, IResettable, IKeyboard
+public class Keypad : IHardware, IResettable, IKeypad
 {
     public string Name => GetType().Name;
 
@@ -19,9 +18,9 @@ public class Keyboard : IHardware, IResettable, IKeyboard
         Released
     }
 
-    private readonly bool[] _lastKeyStates = new bool[16];
-    public KeyState[] Keypad { get; } = new KeyState[16];
-    private KeyboardState _keyboardState;
+    //private readonly bool[] _lastKeyStates = new bool[16];
+    public KeyState[] KeypadButtons { get; } = new KeyState[16];
+    //private KeyboardState? _keyboardState;
 
     public byte? FirstKeyPressedThisFrame { get; private set; }
 
@@ -85,11 +84,11 @@ public class Keyboard : IHardware, IResettable, IKeyboard
 
     public void Reset()
     {
-        for (int i = 0; i < Keypad.Length; i++)
+        for (int i = 0; i < KeypadButtons.Length; i++)
         {
-            Keypad[i] = KeyState.Up;
+            KeypadButtons[i] = KeyState.Up;
         }
-
+        
         FirstKeyPressedThisFrame = null;
     }
 

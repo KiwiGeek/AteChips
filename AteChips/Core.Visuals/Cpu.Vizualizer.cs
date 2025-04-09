@@ -2,7 +2,9 @@
 using System;
 using System.Numerics;
 
-namespace AteChips;
+// ReSharper disable once CheckNamespace
+namespace AteChips.Core;
+
 public partial class Cpu
 {
 

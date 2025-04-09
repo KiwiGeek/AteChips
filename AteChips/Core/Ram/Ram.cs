@@ -1,11 +1,9 @@
 ﻿using System;
-using System.Reflection.PortableExecutable;
-using AteChips.Core.Cpu;
-using AteChips.Core.Ram;
-using AteChips.Core.Shared;
-using AteChips.Shared.Interfaces;
+using AteChips.Core.Shared.Base;
+using AteChips.Core.Shared.Interfaces;
 
-namespace AteChips;
+namespace AteChips.Core;
+
 public partial class Ram : VisualizableHardware, IRam
 {
     public const int FontStartAddress = 0x50;

@@ -2,6 +2,7 @@
 
 namespace AteChips.Core;
 
-internal interface IBuzzer : IUpdatable, IResettable, IVisualizable
+public interface IKeypad : IUpdatable
 {
+    
 }

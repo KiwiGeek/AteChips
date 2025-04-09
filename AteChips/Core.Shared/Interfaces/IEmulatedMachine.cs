@@ -1,8 +1,6 @@
 ﻿using System.Collections.Generic;
-using AteChips.Core.Shared.Video;
-using AteChips.Shared.Interfaces;
 
-namespace AteChips.Core.Shared;
+namespace AteChips.Core.Shared.Interfaces;
 
 public interface IEmulatedMachine
 {

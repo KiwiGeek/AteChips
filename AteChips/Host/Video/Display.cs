@@ -2,17 +2,16 @@
 using OpenTK.Windowing.Common;
 using OpenTK.Windowing.Desktop;
 using System;
-using AteChips.Core.Shared;
 using GameWindow = OpenTK.Windowing.Desktop.GameWindow;
-using IDrawable = AteChips.Shared.Interfaces.IDrawable;
+using IDrawable = AteChips.Core.Shared.Interfaces.IDrawable;
 using OpenTK.Windowing.GraphicsLibraryFramework;
 using ClearBufferMask = OpenTK.Graphics.OpenGL4.ClearBufferMask;
 using GL = OpenTK.Graphics.OpenGL4.GL;
-using AteChips.Shared.Interfaces;
 using AteChips.Shared.Settings;
 using OpenTK.Graphics.OpenGL4;
 using AteChips.Host.UI.ImGui;
-using AteChips.Core.Video;
+using AteChips.Core.Shared.Interfaces;
+using AteChips.Shared.Video;
 
 namespace AteChips.Host.Video;
 
@@ -20,7 +19,7 @@ partial class Display : IVisualizable, IDrawable
 {
     private readonly ImGuiFrontEnd _imgui;
     private readonly ImGuiBackend _imGuiRenderer;
-    private VideoOutputSignal _connectedSignal;
+    private VideoOutputSignal? _connectedSignal;
 
     private bool _gpuInitialized = false;
 
@@ -42,7 +41,7 @@ partial class Display : IVisualizable, IDrawable
 
     private readonly float _pixelAspectRatio; 
 
-    private void InitializeGL(int windowWidth, int windowHeight)
+    private void InitializeGL()
     {
         GL.TexImage2D(TextureTarget.Texture2D, 0, PixelInternalFormat.R8, 64, 32, 0, PixelFormat.Red, PixelType.UnsignedByte, nint.Zero);
 
@@ -62,12 +61,11 @@ partial class Display : IVisualizable, IDrawable
             ClientSize = new Vector2i(1280, 720),
             Title = "AteChips",
             Flags = ContextFlags.ForwardCompatible,
-            IsEventDriven = false
+            IsEventDriven = false,
+            Vsync = VSyncMode.Off
         };
 
         Window = new GameWindow(GameWindowSettings.Default, nativeWindowSettings);
-        Window.IsEventDriven = false;
-        Window.VSync = VSyncMode.Off;
 
         Window.Resize += OnResize;
         Window.Closing += OnWindowClosing;
@@ -77,7 +75,7 @@ partial class Display : IVisualizable, IDrawable
         GL.ClearColor(0f, 0f, 0f, 1f);
         _imgui = new ImGuiFrontEnd(machine, Window.Size.X, Window.Size.Y);
 
-        InitializeGL(Window.Size.X, Window.Size.Y);
+        InitializeGL();
     }
 
     public void Connect(VideoOutputSignal signal)
@@ -95,7 +93,9 @@ partial class Display : IVisualizable, IDrawable
     public Viewport CalculateViewport(int windowWidth, int windowHeight)
     {
         if (_connectedSignal?.Surface == null)
-            return new Viewport(0, 0, windowWidth, windowHeight); // fallback to fullscreen
+        {
+            return new Viewport(0, 0, windowWidth, windowHeight);
+        }
 
 
         int logicalWidth = _connectedSignal.Surface.Width;
@@ -158,8 +158,7 @@ partial class Display : IVisualizable, IDrawable
 
     private void RenderSurface(int x, int y, int width, int height)
     {
-        if (_connectedSignal?.IsConnected != true)
-            return;
+        if (_connectedSignal?.IsConnected != true) { return; }
 
         IRenderSurface surface = _connectedSignal.Surface;
 
@@ -229,7 +228,8 @@ partial class Display : IVisualizable, IDrawable
 
     private void SetupFullscreenQuad()
     {
-        float[] vertices = {
+        float[] vertices =
+        [
             //   X      Y       U     V
             -1f, -1f,   0f, 1f,  // bottom-left
             1f, -1f,   1f, 1f,  // bottom-right
@@ -238,7 +238,7 @@ partial class Display : IVisualizable, IDrawable
             -1f, -1f,   0f, 1f,  // bottom-left
             1f,  1f,   1f, 0f,  // top-right
             -1f,  1f,   0f, 0f   // top-left
-        };
+        ];
 
         _vao = GL.GenVertexArray();
         _vbo = GL.GenBuffer();
@@ -256,7 +256,7 @@ partial class Display : IVisualizable, IDrawable
         GL.EnableVertexAttribArray(1);
     }
 
-    private int CreateShader()
+    private static int CreateShader()
     {
         string vertexSource = @"
         #version 330 core

@@ -1,8 +1,9 @@
 ﻿using AteChips.Host.Video;
 using System.Collections.Generic;
-using AteChips.Core.Framebuffer;
+using AteChips.Core.Shared.Interfaces;
+using AteChips.Shared.Video;
 
-namespace AteChips.Core.Video;
+namespace AteChips.Core;
 public class FrameBufferRenderer : IVideoCard
 {
     private readonly GpuTextureSurface _renderSurface;

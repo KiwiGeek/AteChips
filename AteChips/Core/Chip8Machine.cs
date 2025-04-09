@@ -2,11 +2,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using AteChips.Core.Framebuffer;
-using AteChips.Core.Keypad;
-using AteChips.Core.Shared;
-using AteChips.Core.Shared.Video;
-using AteChips.Shared.Interfaces;
+using AteChips.Core;
+using AteChips.Core.Shared.Interfaces;
 
 namespace AteChips;
 public class Chip8Machine : IEmulatedMachine
@@ -22,7 +19,7 @@ public class Chip8Machine : IEmulatedMachine
 
     private readonly FrameBuffer _frameBuffer;
     private readonly Ram _ram;
-    private readonly Keyboard _keyboard;
+    private readonly Keypad _keypad;
     private readonly Buzzer _buzzer;
     private readonly Cpu _cpu;
 
@@ -30,7 +27,7 @@ public class Chip8Machine : IEmulatedMachine
     {
         _frameBuffer = Register<FrameBuffer>();         // relies on nothing
         _ram = Register<Ram>();                         // relies on IEmulatedMachine
-        _keyboard = Register<Keyboard>();               // relies on nothing
+        _keypad = Register<Keypad>();               // relies on nothing
         _buzzer = Register<Buzzer>();                   // relies on IRam
         _cpu = Register<Cpu>();                         // relies on IFrameBuffer, IKeyboard and IRam
 
@@ -103,7 +100,7 @@ public class Chip8Machine : IEmulatedMachine
                 nameof(IEmulatedMachine) => this,
                 nameof(FrameBuffer) => _frameBuffer,
                 nameof(Ram) => _ram,
-                nameof(Keyboard) => _keyboard,
+                nameof(Keypad) => _keypad,
                 nameof(Buzzer) => _buzzer,
                 nameof(Cpu) => _cpu,
                 _ => throw new InvalidOperationException("can't resolve dependency")

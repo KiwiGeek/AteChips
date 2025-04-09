@@ -1,10 +1,7 @@
 ﻿using System;
-using AteChips.Core.Cpu;
-using AteChips.Core.Framebuffer;
-using AteChips.Core.Keypad;
-using AteChips.Shared.Interfaces;
+using AteChips.Core.Shared.Base;
 
-namespace AteChips;
+namespace AteChips.Core;
 
 public partial class Cpu : VisualizableHardware, ICpu
 {
@@ -73,16 +70,16 @@ public partial class Cpu : VisualizableHardware, ICpu
 
     // hardware we care about
     private readonly FrameBuffer _frameBuffer;
-    private readonly Keyboard _keyboard;
+    private readonly Keypad _keypad;
     private readonly Ram _ram;
 
     // the CPU state
     public CpuExecutionState ExecutionState { get; private set; } = CpuExecutionState.Running;
 
-    public Cpu(FrameBuffer frameBuffer, Keyboard keyboard, Ram ram)
+    public Cpu(FrameBuffer frameBuffer, Keypad keypad, Ram ram)
     {
         _frameBuffer = frameBuffer;
-        _keyboard = keyboard;
+        _keypad = keypad;
         _ram = ram;
         Reset();
     }
@@ -119,8 +116,7 @@ public partial class Cpu : VisualizableHardware, ICpu
 
         _cycleAccumulator += delta;
 
-        if (ExecutionState == CpuExecutionState.Paused)
-            return false;
+        if (ExecutionState == CpuExecutionState.Paused) { return false; }
 
         while (_cycleAccumulator >= SecondsPerCycle)
         {
@@ -149,14 +145,14 @@ public partial class Cpu : VisualizableHardware, ICpu
 
         if (_waitingForKey)
         {
-            if (_pressedKey is null && _keyboard.FirstKeyPressedThisFrame.HasValue)
+            if (_pressedKey is null && _keypad.FirstKeyPressedThisFrame.HasValue)
             {
-                _pressedKey = _keyboard.FirstKeyPressedThisFrame.Value;
+                _pressedKey = _keypad.FirstKeyPressedThisFrame.Value;
                 Registers[_waitingRegister] = _pressedKey.Value;
                 return;
             }
 
-            if (_pressedKey is not null && _keyboard.Keypad[_pressedKey.Value] == Keyboard.KeyState.Up)
+            if (_pressedKey is not null && _keypad.KeypadButtons[_pressedKey.Value] == Keypad.KeyState.Up)
             {
                 _waitingForKey = false;
                 _pressedKey = null;
@@ -469,7 +465,7 @@ public partial class Cpu : VisualizableHardware, ICpu
     {
         // skip the next instruction if the key is pressed
         byte register = (byte)((instruction & 0x0F00) >> 8);
-        if (_keyboard.Keypad[Registers[register]] is Keyboard.KeyState.Down or Keyboard.KeyState.Pressed)
+        if (_keypad.KeypadButtons[Registers[register]] is Keypad.KeyState.Down or Keypad.KeyState.Pressed)
         {
             ProgramCounter += 2;
         }
@@ -479,7 +475,7 @@ public partial class Cpu : VisualizableHardware, ICpu
     {
         // skip the next instruction if the key is not pressed
         byte register = (byte)((instruction & 0x0F00) >> 8);
-        if (_keyboard.Keypad[Registers[register]] is Keyboard.KeyState.Up or Keyboard.KeyState.Released)
+        if (_keypad.KeypadButtons[Registers[register]] is Keypad.KeyState.Up or Keypad.KeyState.Released)
         {
             ProgramCounter += 2;
         }

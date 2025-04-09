@@ -1,22 +1,12 @@
-﻿using System;
-using AteChips.Host.Runtime;
+﻿using AteChips.Host.Runtime;
 
 namespace AteChips;
 
 public static class Program
 {
-    public static EmulatorRuntime Chip8EmulatorRuntime;
-    public static Chip8Machine Chip8Machine;
+    public static Chip8Machine Chip8Machine { get; } = new ();
+    public static EmulatorRuntime Chip8EmulatorRuntime { get; } = new(Chip8Machine);
 
-    [STAThread]
-    public static void Main(string[] args)
-    {
-        // Create the emulated machine (core CHIP-8 hardware)
-        Chip8Machine = new Chip8Machine();
-        Chip8Machine.Reset();
+    public static void Main() => Chip8EmulatorRuntime.Run();
 
-        // Create and run the emulator runtime (host layer + main loop), and pass it the machine we're emulating
-        Chip8EmulatorRuntime = new (Chip8Machine);
-        Chip8EmulatorRuntime.Run();
-    }
 }

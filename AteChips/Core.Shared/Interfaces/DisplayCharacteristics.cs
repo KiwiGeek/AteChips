@@ -1,4 +1,4 @@
-﻿namespace AteChips.Core.Shared.Video;
+﻿namespace AteChips.Core.Shared.Interfaces;
 public class DisplayCharacteristics
 {
     public float PixelAspectRatio { get; init; } = 1.0f;

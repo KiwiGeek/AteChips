@@ -1,13 +1,12 @@
-﻿using AteChips.Core.Buzzer;
-using AteChips.Shared.Interfaces;
+﻿using AteChips.Core.Shared.Base;
 using System;
 
-namespace AteChips;
+namespace AteChips.Core;
 
 public partial class Buzzer : VisualizableHardware, IBuzzer
 {
 
-    private Ram _ram;
+    private readonly Ram _ram;
 
     public Buzzer(Ram ram)
     {

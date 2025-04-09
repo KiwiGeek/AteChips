@@ -1,6 +1,6 @@
 ﻿using AteChips.Host.Video;
 
-namespace AteChips.Core.Video;
+namespace AteChips.Shared.Video;
 public class VideoOutputSignal
 {
     public string Name { get; init; } = "Main";

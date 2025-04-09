@@ -1,7 +1,8 @@
 ﻿using System;
-using AteChips.Shared.Interfaces;
+using AteChips.Core.Shared.Interfaces;
 
-namespace AteChips.Core.Framebuffer;
+namespace AteChips.Core;
+
 public class FrameBuffer : IHardware, IResettable
 {
     public string Name => GetType().Name;

@@ -1,4 +1,4 @@
-﻿namespace AteChips.Shared.Interfaces;
+﻿namespace AteChips.Core.Shared.Interfaces;
 
 public interface IVisualizable
 {

@@ -1,6 +1,6 @@
-﻿using AteChips.Shared.Interfaces;
+﻿using AteChips.Core.Shared.Interfaces;
 
-namespace AteChips.Core.Ram;
+namespace AteChips.Core;
 
 public interface IRam : IResettable
 {

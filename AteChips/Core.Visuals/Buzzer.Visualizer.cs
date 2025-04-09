@@ -1,7 +1,9 @@
 ﻿using ImGuiNET;
 using System;
 
-namespace AteChips;
+// ReSharper disable once CheckNamespace
+namespace AteChips.Core;
+
 public partial class Buzzer
 {
 

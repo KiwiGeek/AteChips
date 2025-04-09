@@ -1,6 +1,6 @@
 ﻿using System.Linq;
-using AteChips.Core.Shared;
-using AteChips.Shared.Interfaces;
+using AteChips.Core;
+using AteChips.Core.Shared.Interfaces;
 using AteChips.Shared.Settings;
 using ImGuiNET;
 using Vector2 = System.Numerics.Vector2;
