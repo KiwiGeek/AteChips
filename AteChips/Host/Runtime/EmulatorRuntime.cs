@@ -3,23 +3,41 @@ using System.Linq;
 using AteChips.Core.Framebuffer;
 using AteChips.Host.Video;
 using AteChips.Shared.Interfaces;
+using AteChips.Core.Video;
+using System.Collections.Generic;
 
 namespace AteChips.Host.Runtime;
-class EmulatorRuntime
+public class EmulatorRuntime
 {
     private readonly Display _display;
     private readonly IUpdatable[] _updatables;
     private readonly IDrawable[] _drawables;
     private readonly bool _singleDrawable;
+    private readonly FrameBufferRenderer _gpu;
+    private readonly List<IVisualizable> _visuals = [];
+    public IEnumerable<IVisualizable> Visuals => _visuals;
 
     public EmulatorRuntime(Chip8Machine emulatedMachine)
     {
-        _display = new Display(emulatedMachine.Get<FrameBuffer>());
+
+        // Extract the framebuffer from the emulated video memory
+        FrameBuffer framebuffer = emulatedMachine.Get<FrameBuffer>();
+        _gpu = new FrameBufferRenderer(framebuffer);      // Core-level GPU
+
+        _display = new Display(emulatedMachine.DisplaySpec.PixelAspectRatio);
+        _display.Connect(_gpu.GetOutputs().First()); // Hook up video output
 
         _drawables = [_display];
         _singleDrawable = _drawables.Length == 1;
 
         _updatables = emulatedMachine.Updatables.ToArray();
+
+        // build the visuals list
+        foreach (IVisualizable visualizable in emulatedMachine.Visualizables.ToList())
+        {
+            _visuals.Add(visualizable);
+        }
+        _visuals.Add(_display);
     }
 
     public void Run()
@@ -54,6 +72,7 @@ class EmulatorRuntime
 
     private void Render(double delta)
     {
+        _gpu.Update();
         if (_singleDrawable)
         {
             _display.Draw(delta);

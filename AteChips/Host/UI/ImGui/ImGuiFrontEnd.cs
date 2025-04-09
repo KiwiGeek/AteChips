@@ -44,7 +44,7 @@ public class ImGuiFrontEnd
 
         RenderConsoleMenu();
 
-        foreach (IVisualizable status in Chip8Machine.Instance.Visualizables
+        foreach (IVisualizable status in Program.Chip8EmulatorRuntime.Visuals
                      .OrderBy(visual => visual.GetType().Name).ToList())
         {
             if (status.VisualShown) { status.Visualize(); }
@@ -69,7 +69,7 @@ public class ImGuiFrontEnd
 
          ImGuiNET.ImGui.Begin("Debug Console", flags);
          // Top button bar
-         foreach (IVisualizable visual in Chip8Machine.Instance.Visualizables)
+         foreach (IVisualizable visual in Program.Chip8EmulatorRuntime.Visuals)
          {
              if (ImGuiWidgets.ToggleButton(visual.GetType().Name, visual.VisualShown))
              {

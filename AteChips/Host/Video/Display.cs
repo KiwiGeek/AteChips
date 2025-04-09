@@ -7,11 +7,11 @@ using IDrawable = AteChips.Shared.Interfaces.IDrawable;
 using OpenTK.Windowing.GraphicsLibraryFramework;
 using ClearBufferMask = OpenTK.Graphics.OpenGL4.ClearBufferMask;
 using GL = OpenTK.Graphics.OpenGL4.GL;
-using AteChips.Core.Framebuffer;
 using AteChips.Shared.Interfaces;
 using AteChips.Shared.Settings;
 using OpenTK.Graphics.OpenGL4;
 using AteChips.Host.UI.ImGui;
+using AteChips.Core.Video;
 
 namespace AteChips.Host.Video;
 
@@ -19,16 +19,15 @@ partial class Display : IVisualizable, IDrawable
 {
     private readonly ImGuiFrontEnd _imgui;
     private readonly ImGuiBackend _imGuiRenderer;
-    private readonly FrameBuffer _frameBuffer;
+    private VideoOutputSignal _connectedSignal;
 
+    private bool _gpuInitialized = false;
 
     private bool _fullscreen;
     private Vector2i _savedClientSize;
     private Vector2i _savedPosition;
 
-    private int _texture;
     private int _vao, _vbo, _shader;
-    private readonly byte[] _textureBuffer = new byte[64 * 32]; // assuming CHIP-8 res
 
 
     public GameWindow Window { get; }
@@ -40,12 +39,11 @@ partial class Display : IVisualizable, IDrawable
     private const double MESSAGE_PUMP_HZ = 60;
     private const double RENDER_INTERVAL = 1.0 / RENDER_HZ;
     private const double MESSAGE_PUMP_INTERVAL = 1.0 / MESSAGE_PUMP_HZ;
-    private const float PIXEL_ASPECT_RATIO = 1.5f;
+
+    private readonly float _pixelAspectRatio; 
 
     private void InitializeGL(int windowWidth, int windowHeight)
     {
-        _texture = GL.GenTexture();
-        GL.BindTexture(TextureTarget.Texture2D, _texture);
 
         GL.TexImage2D(TextureTarget.Texture2D, 0, PixelInternalFormat.R8, 64, 32, 0, PixelFormat.Red, PixelType.UnsignedByte, nint.Zero);
 
@@ -57,8 +55,10 @@ partial class Display : IVisualizable, IDrawable
     }
 
 
-    public Display(FrameBuffer frameBuffer)
+    public Display(float pixelAspectRatio = 1.0f)
     {
+        _pixelAspectRatio = pixelAspectRatio;
+
         NativeWindowSettings nativeWindowSettings = new()
         {
             ClientSize = new Vector2i(1280, 720),
@@ -78,9 +78,13 @@ partial class Display : IVisualizable, IDrawable
 
         GL.ClearColor(0f, 0f, 0f, 1f);
         _imgui = new ImGuiFrontEnd(Window.Size.X, Window.Size.Y);
-        _frameBuffer = frameBuffer;
 
         InitializeGL(Window.Size.X, Window.Size.Y);
+    }
+
+    public void Connect(VideoOutputSignal signal)
+    {
+        _connectedSignal = signal;
     }
 
     public struct Viewport
@@ -90,11 +94,15 @@ partial class Display : IVisualizable, IDrawable
             => (X, Y, Width, Height) = (x, y, width, height);
     }
 
-    public Viewport CalculateChip8Viewport(int windowWidth, int windowHeight)
+    public Viewport CalculateViewport(int windowWidth, int windowHeight)
     {
-        int logicalWidth = _frameBuffer.Width;
-        int logicalHeight = _frameBuffer.Height;
-        float chipAspect = logicalWidth / (logicalHeight * PIXEL_ASPECT_RATIO);
+        if (_connectedSignal?.Surface == null)
+            return new Viewport(0, 0, windowWidth, windowHeight); // fallback to fullscreen
+
+
+        int logicalWidth = _connectedSignal.Surface.Width;
+        int logicalHeight = _connectedSignal.Surface.Height;
+        float chipAspect = logicalWidth / (logicalHeight * _pixelAspectRatio);
         float windowAspect = windowWidth / (float)windowHeight;
 
         if (!Settings.MaintainAspectRatio)
@@ -123,12 +131,21 @@ partial class Display : IVisualizable, IDrawable
 
     private unsafe void OnRenderFrame(FrameEventArgs args)
     {
+
+        if (!_gpuInitialized)
+        {
+            _gpuInitialized = true;
+
+            Window.MakeCurrent(); // extra safe
+        }
+
+
         GL.Clear(ClearBufferMask.ColorBufferBit);
         GLFW.GetFramebufferSize(Window.WindowPtr, out int fbWidth, out int fbHeight);
 
         // calculate aspect-ratio corrected viewport
-        Viewport viewport = CalculateChip8Viewport(fbWidth, fbHeight);
-        RenderFramebuffer(viewport.X, viewport.Y, viewport.Width, viewport.Height);
+        Viewport viewport = CalculateViewport(fbWidth, fbHeight);
+        RenderSurface(viewport.X, viewport.Y, viewport.Width, viewport.Height);
 
         if (Settings.ShowImGui)
         {
@@ -141,26 +158,18 @@ partial class Display : IVisualizable, IDrawable
         Window.SwapBuffers();
     }
 
-    private void RenderFramebuffer(int x, int y, int width, int height)
+    private void RenderSurface(int x, int y, int width, int height)
     {
-        ConvertFramebufferToBytes(_frameBuffer.Pixels, _textureBuffer);
+        if (_connectedSignal?.IsConnected != true)
+            return;
 
-        GL.BindTexture(TextureTarget.Texture2D, _texture);
-        GL.TexSubImage2D(TextureTarget.Texture2D, 0, 0, 0, 64, 32, PixelFormat.Red, PixelType.UnsignedByte, _textureBuffer);
+        IRenderSurface surface = _connectedSignal.Surface;
 
+        GL.BindTexture(TextureTarget.Texture2D, (int)surface.TextureId);
         GL.Viewport(x, y, width, height);
-
         GL.UseProgram(_shader);
         GL.BindVertexArray(_vao);
         GL.DrawArrays(PrimitiveType.Triangles, 0, 6);
-    }
-
-    private void ConvertFramebufferToBytes(bool[] source, byte[] target)
-    {
-        for (int i = 0; i < source.Length; i++)
-        {
-            target[i] = source[i] ? (byte)255 : (byte)0;
-        }
     }
 
     public void ToggleFullScreen()
@@ -187,7 +196,6 @@ partial class Display : IVisualizable, IDrawable
             Window.Size = new Vector2i(monitor.HorizontalResolution, monitor.VerticalResolution);
             _fullscreen = true;
         }
-
     }
 
     public void Draw(double delta)

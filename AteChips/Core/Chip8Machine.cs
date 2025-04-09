@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using AteChips.Core.Framebuffer;
 using AteChips.Core.Keypad;
+using AteChips.Core.Shared.Video;
 using AteChips.Host.Video;
 using AteChips.Shared.Interfaces;
 
@@ -15,14 +16,9 @@ public class Chip8Machine
 
     private readonly List<IHardware> _devices = [];
 
-    public IReadOnlyList<IVisualizable> Visualizables
-    {
-        get
-        {
-            if (_deviceListDirty) { RebuildCacheIfNeeded(); }
-            return _visualizableCache!;
-        }
-    }
+    public DisplayCharacteristics DisplaySpec { get; } = new(1.5f);
+
+    public IReadOnlyList<IVisualizable> Visualizables => _devices.OfType<IVisualizable>().ToList();
 
     public IReadOnlyList<IResettable> Resettables
     {
@@ -45,13 +41,13 @@ public class Chip8Machine
 
     private void RebuildCacheIfNeeded()
     {
-        _visualizableCache = _devices.OfType<IVisualizable>().OrderBy(v => v.GetType().Name).ToList();
+        //_visualizableCache = _devices.OfType<IVisualizable>().OrderBy(v => v.GetType().Name).ToList();
         _resettableCache = _devices.OfType<IResettable>().ToList();
         _updatableCache = _devices.OfType<IUpdatable>().OrderBy(u => u.UpdatePriority).ToList();
         _drawableCache = _devices.OfType<IDrawable>().ToList();
     }
 
-    private IReadOnlyList<IVisualizable>? _visualizableCache;
+   // private IReadOnlyList<IVisualizable>? _visualizableCache;
     private IReadOnlyList<IResettable>? _resettableCache;
     private IReadOnlyList<IUpdatable>? _updatableCache;
     private IReadOnlyList<IDrawable>? _drawableCache;

@@ -5,6 +5,9 @@ namespace AteChips;
 
 public static class Program
 {
+    public static EmulatorRuntime Chip8EmulatorRuntime;
+
+
     [STAThread]
     public static void Main(string[] args)
     {
@@ -13,7 +16,7 @@ public static class Program
         emulatedMachine.Reset();
 
         // Create and run the emulator runtime (host layer + main loop), and pass it the machine we're emulating
-        EmulatorRuntime chip8 = new (emulatedMachine);
-        chip8.Run();
+        Chip8EmulatorRuntime = new (emulatedMachine);
+        Chip8EmulatorRuntime.Run();
     }
 }
