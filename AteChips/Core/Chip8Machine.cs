@@ -119,11 +119,6 @@ public class Chip8Machine : IEmulatedMachine
     public T Get<T>() where T : IHardware => _devices.OfType<T>().Single();
     public IEnumerable<T> GetAll<T>() where T : IHardware => _devices.OfType<T>();
 
-    public void Reset()
-    {
-        foreach (IResettable device in Resettables)
-        {
-            device.Reset();
-        }
-    }
+    public void Reset() => Resettables.ToList().ForEach(device => device.Reset());
+
 }
