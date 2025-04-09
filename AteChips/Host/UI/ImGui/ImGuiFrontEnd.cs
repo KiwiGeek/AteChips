@@ -1,4 +1,5 @@
 ﻿using System.Linq;
+using AteChips.Core.Shared;
 using AteChips.Shared.Interfaces;
 using AteChips.Shared.Settings;
 using ImGuiNET;
@@ -8,11 +9,14 @@ namespace AteChips.Host.UI.ImGui;
 public class ImGuiFrontEnd
 {
 
-
     private readonly ImGuiFileDialog _fileBrowser = new();
+    private readonly IEmulatedMachine _machine;
 
-    public ImGuiFrontEnd(int width, int height)
+    public ImGuiFrontEnd(IEmulatedMachine machine, int width, int height)
     {
+
+        _machine = machine;
+
         ImGuiViewportPtr viewport = ImGuiNET.ImGui.GetMainViewport();
         ImGuiNET.ImGui.SetNextWindowPos(viewport.Pos);
         ImGuiNET.ImGui.SetNextWindowSize(viewport.Size);
@@ -81,14 +85,14 @@ public class ImGuiFrontEnd
 
          if (ImGuiNET.ImGui.Button("Reset"))
          {
-             Chip8Machine.Instance.Reset();
+             _machine.Reset();
          }
          ImGuiNET.ImGui.SameLine();
 
          if (ImGuiNET.ImGui.Button("Reboot"))
          {
-             Chip8Machine.Instance.Get<Cpu>().Reset();
-             Chip8Machine.Instance.Get<Cpu>().Run();
+             _machine.Get<Cpu>().Reset();
+             _machine.Get<Cpu>().Run();
          }
 
          ImGuiNET.ImGui.SameLine();
@@ -102,10 +106,10 @@ public class ImGuiFrontEnd
 
          if (_fileBrowser.SelectedFile != null)
          {
-             Chip8Machine.Instance.Reset();
-             Chip8Machine.Instance.Get<Ram>().LoadRom(_fileBrowser.SelectedFile);
-             Chip8Machine.Instance.Get<Cpu>().Reset();
-             Chip8Machine.Instance.Get<Cpu>().Run();
+             _machine.Reset();
+             _machine.Get<Ram>().LoadRom(_fileBrowser.SelectedFile);
+             _machine.Get<Cpu>().Reset();
+             _machine.Get<Cpu>().Run();
             _fileBrowser.Reset(); // reset after loading
          }
 

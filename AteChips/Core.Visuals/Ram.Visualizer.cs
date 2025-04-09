@@ -23,7 +23,7 @@ public partial class Ram
             ImGui.SetNextWindowSize(windowSize, ImGuiCond.FirstUseEver);
         }
 
-        _cpu ??= Chip8Machine.Instance.Get<Cpu>();
+        _cpu ??= _machine.Get<Cpu>();
 
         ImGui.Begin("Ram", ImGuiWindowFlags.NoSavedSettings);
 

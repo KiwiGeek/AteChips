@@ -2,6 +2,7 @@
 using OpenTK.Windowing.Common;
 using OpenTK.Windowing.Desktop;
 using System;
+using AteChips.Core.Shared;
 using GameWindow = OpenTK.Windowing.Desktop.GameWindow;
 using IDrawable = AteChips.Shared.Interfaces.IDrawable;
 using OpenTK.Windowing.GraphicsLibraryFramework;
@@ -29,7 +30,6 @@ partial class Display : IVisualizable, IDrawable
 
     private int _vao, _vbo, _shader;
 
-
     public GameWindow Window { get; }
 
     private double _renderAccumulator;
@@ -44,7 +44,6 @@ partial class Display : IVisualizable, IDrawable
 
     private void InitializeGL(int windowWidth, int windowHeight)
     {
-
         GL.TexImage2D(TextureTarget.Texture2D, 0, PixelInternalFormat.R8, 64, 32, 0, PixelFormat.Red, PixelType.UnsignedByte, nint.Zero);
 
         GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)TextureMinFilter.Nearest);
@@ -54,10 +53,9 @@ partial class Display : IVisualizable, IDrawable
         SetupFullscreenQuad();
     }
 
-
-    public Display(float pixelAspectRatio = 1.0f)
+    public Display(IEmulatedMachine machine)
     {
-        _pixelAspectRatio = pixelAspectRatio;
+        _pixelAspectRatio = machine.DisplaySpec.PixelAspectRatio;
 
         NativeWindowSettings nativeWindowSettings = new()
         {
@@ -77,7 +75,7 @@ partial class Display : IVisualizable, IDrawable
         _imGuiRenderer = new ImGuiBackend(Window);
 
         GL.ClearColor(0f, 0f, 0f, 1f);
-        _imgui = new ImGuiFrontEnd(Window.Size.X, Window.Size.Y);
+        _imgui = new ImGuiFrontEnd(machine, Window.Size.X, Window.Size.Y);
 
         InitializeGL(Window.Size.X, Window.Size.Y);
     }

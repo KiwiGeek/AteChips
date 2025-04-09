@@ -5,6 +5,7 @@ using AteChips.Host.Video;
 using AteChips.Shared.Interfaces;
 using AteChips.Core.Video;
 using System.Collections.Generic;
+using AteChips.Core.Shared;
 
 namespace AteChips.Host.Runtime;
 public class EmulatorRuntime
@@ -17,14 +18,14 @@ public class EmulatorRuntime
     private readonly List<IVisualizable> _visuals = [];
     public IEnumerable<IVisualizable> Visuals => _visuals;
 
-    public EmulatorRuntime(Chip8Machine emulatedMachine)
+    public EmulatorRuntime(IEmulatedMachine emulatedMachine)
     {
 
         // Extract the framebuffer from the emulated video memory
         FrameBuffer framebuffer = emulatedMachine.Get<FrameBuffer>();
         _gpu = new FrameBufferRenderer(framebuffer);      // Core-level GPU
 
-        _display = new Display(emulatedMachine.DisplaySpec.PixelAspectRatio);
+        _display = new Display(emulatedMachine);
         _display.Connect(_gpu.GetOutputs().First()); // Hook up video output
 
         _drawables = [_display];

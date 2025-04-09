@@ -14,7 +14,7 @@ public partial class Buzzer : VisualizableHardware, IBuzzer
         _ram = ram;
     }
 
-   // private SoundEffect _buzzerSound = null!;
+    //private SoundEffect _buzzerSound = null!;
     //private SoundEffectInstance _buzzerInstance = null!;
 
     private const int SampleRate = 44100;
@@ -156,7 +156,7 @@ public partial class Buzzer : VisualizableHardware, IBuzzer
         //_buzzerInstance = _buzzerSound.CreateInstance();
         //_buzzerInstance.IsLooped = true;
 
-        if (Chip8Machine.Instance.TryGet(out Ram? ram)) { _ram = ram!; }
+        //if (Chip8Machine.Instance.TryGet(out Ram? ram)) { _ram = ram!; }
     }
 
    

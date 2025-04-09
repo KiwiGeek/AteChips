@@ -1,8 +1,9 @@
 ﻿using System;
-using System.Numerics;
+using System.Reflection.PortableExecutable;
+using AteChips.Core.Cpu;
 using AteChips.Core.Ram;
+using AteChips.Core.Shared;
 using AteChips.Shared.Interfaces;
-using ImGuiNET;
 
 namespace AteChips;
 public partial class Ram : VisualizableHardware, IRam
@@ -38,6 +39,7 @@ public partial class Ram : VisualizableHardware, IRam
     public const ushort DELAY_TIMER_ADDR = 0x01FA;
     public const ushort SOUND_TIMER_ADDR = 0x01F9;
 
+    private readonly IEmulatedMachine _machine;
     private Cpu? _cpu;
 
     public byte[] Memory { get; } = new byte[4096];
@@ -52,8 +54,9 @@ public partial class Ram : VisualizableHardware, IRam
         }
     }
 
-    public Ram()
+    public Ram(IEmulatedMachine machine)
     {
+        _machine = machine;
         Reset();
     }
 
