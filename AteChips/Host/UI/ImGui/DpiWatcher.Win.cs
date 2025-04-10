@@ -1,37 +1,22 @@
 ﻿#if WINDOWS
 
 using System;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using OpenTK.Windowing.Desktop;
 
 namespace AteChips.Host.UI.ImGui;
 
-public class DpiWatcher
+public partial class DpiWatcher
 {
-    [DllImport("user32.dll")] private static extern IntPtr GetActiveWindow();
-    [DllImport("user32.dll")] private static extern uint GetDpiForWindow(IntPtr hWnd);
+    [LibraryImport("user32.dll", SetLastError = true)] 
+    private static partial IntPtr GetActiveWindow();
 
-    private float _lastScale;
+    [LibraryImport("user32.dll", SetLastError = true)] 
+    private static partial uint GetDpiForWindow(IntPtr hWnd);
 
-    public DpiWatcher(NativeWindow window, Action<float> onDpiChanged)
-    {
-        window.Move += _ =>
-        {
-            float pendingScale = GetCurrentDpiScale();
 
-            if (Math.Abs(pendingScale - _lastScale) > 0.01f)
-            {
-                _lastScale = pendingScale;
-                onDpiChanged.Invoke(_lastScale);
-            }
-        };
-
-        // Initial scale check
-        _lastScale = GetCurrentDpiScale();
-        //onDpiChanged.Invoke(_lastScale);
-    }
-
-    public float GetCurrentDpiScale()
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public partial float GetCurrentDpiScale()
     {
         IntPtr hWnd = GetActiveWindow();
         uint dpi = GetDpiForWindow(hWnd);
