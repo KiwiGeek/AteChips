@@ -6,6 +6,9 @@
 		<PublishReadyToRun>false</PublishReadyToRun>
 		<TieredCompilation>false</TieredCompilation>
 		<NoWarn>IDE0130</NoWarn>
+		<IsWindows Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::Windows)))' == 'true'">true</IsWindows>
+		<IsMacOS Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::OSX)))' == 'true'">true</IsMacOS>
+		<IsLinux Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::Linux)))' == 'true'">true</IsLinux>
 	</PropertyGroup>
 	<PropertyGroup>
 		<ApplicationManifest>app.manifest</ApplicationManifest>
@@ -14,15 +17,15 @@
 	</PropertyGroup>
 
 
-	<PropertyGroup Condition="'$(OS)' == 'Windows_NT'">
+	<PropertyGroup Condition="'$(IsWindows)' == 'true'">
 		<DefineConstants>$(DefineConstants);WINDOWS;NOT_OSX;NOT_TUX</DefineConstants>
 	</PropertyGroup>
 
-	<PropertyGroup Condition=" '$(RuntimeIdentifier)' != '' and '$(RuntimeIdentifier)' &gt;= 'osx' and '$(RuntimeIdentifier)' &lt; 'osx~' ">
+	<PropertyGroup Condition="'$(IsMacOS)' == 'true'">
 		<DefineConstants>$(DefineConstants);OSX;NOT_WINDOWS;NOT_TUX</DefineConstants>
 	</PropertyGroup>
 
-	<PropertyGroup Condition=" '$(RuntimeIdentifier)' != '' and '$(RuntimeIdentifier)' &gt;= 'linux' and '$(RuntimeIdentifier)' &lt; 'linux~' ">
+	<PropertyGroup Condition="'$(IsLinux)' == 'true'">
 		<DefineConstants>$(DefineConstants);LINUX;NOT_WINDOWS;NOT_OSX</DefineConstants>
 	</PropertyGroup>
 
