@@ -273,8 +273,6 @@ void main()
     /// </summary>
     public void Update(GameWindow wnd, double deltaSeconds)
     {
-        _dpiWatcher.Update();
-
         if (_frameBegun)
         {
             ImGuiNET.ImGui.Render();

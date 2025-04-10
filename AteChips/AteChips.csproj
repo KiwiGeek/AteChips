@@ -12,9 +12,20 @@
 		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 		<Nullable>enable</Nullable>
 	</PropertyGroup>
-	<ItemGroup>
-		<None Include="Core\Chip8Machine.cs" />
-	</ItemGroup>
+
+
+	<PropertyGroup Condition="'$(OS)' == 'Windows_NT'">
+		<DefineConstants>$(DefineConstants);WINDOWS;NOT_OSX;NOT_TUX</DefineConstants>
+	</PropertyGroup>
+
+	<PropertyGroup Condition=" '$(RuntimeIdentifier)' != '' and '$(RuntimeIdentifier)' &gt;= 'osx' and '$(RuntimeIdentifier)' &lt; 'osx~' ">
+		<DefineConstants>$(DefineConstants);OSX;NOT_WINDOWS;NOT_TUX</DefineConstants>
+	</PropertyGroup>
+
+	<PropertyGroup Condition=" '$(RuntimeIdentifier)' != '' and '$(RuntimeIdentifier)' &gt;= 'linux' and '$(RuntimeIdentifier)' &lt; 'linux~' ">
+		<DefineConstants>$(DefineConstants);LINUX;NOT_WINDOWS;NOT_OSX</DefineConstants>
+	</PropertyGroup>
+
 	<ItemGroup>
 		<PackageReference Include="ImGui.NET" Version="1.91.6.1" />
 		<PackageReference Include="OpenTK" Version="4.9.4" />
@@ -24,8 +35,5 @@
 		<Folder Include="Host\Input\" />
 		<Folder Include="Shared\Utilities\" />
 	</ItemGroup>
-	<Target Name="RestoreDotnetTools" BeforeTargets="Restore">
-		<Message Text="Restoring dotnet tools" Importance="High" />
-		<Exec Command="dotnet tool restore" />
-	</Target>
+
 </Project>
