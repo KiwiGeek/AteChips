@@ -9,6 +9,7 @@ using OpenTK.Windowing.GraphicsLibraryFramework;
 using System.Diagnostics;
 using ErrorCode = OpenTK.Graphics.OpenGL4.ErrorCode;
 using Vector4 = System.Numerics.Vector4;
+using static System.Formats.Asn1.AsnWriter;
 
 namespace AteChips.Host.UI.ImGui;
 
@@ -31,6 +32,11 @@ public class ImGuiBackend : IDisposable
     private int _windowWidth;
     private int _windowHeight;
     private GameWindow _window;
+    private DpiWatcher _dpiWatcher;
+    private bool _dpiScaleChanged;
+    private float _nextDpiScale = 1.0f;
+
+    private static float FONT_SIZE = 14;
 
     private System.Numerics.Vector2 _scaleFactor = System.Numerics.Vector2.One;
 
@@ -38,6 +44,15 @@ public class ImGuiBackend : IDisposable
 
     private int GLVersion;
     private bool CompatibilityProfile;
+
+
+    private readonly Vector2 _baseWindowPadding = new(8, 8);
+    private readonly Vector2 _baseFramePadding = new(6, 4);
+    private readonly Vector2 _baseItemSpacing = new(8, 4);
+    private const float _baseScrollbarSize = 14f;
+    private const float _baseGrabMinSize = 10f;
+
+
 
     //private readonly unsafe Window* _glfwWindow;
 
@@ -62,10 +77,10 @@ public class ImGuiBackend : IDisposable
         nint context = ImGuiNET.ImGui.CreateContext();
         ImGuiNET.ImGui.SetCurrentContext(context);
         ImGuiIOPtr io = ImGuiNET.ImGui.GetIO();
-        io.Fonts.AddFontDefault();
+        _dpiWatcher = new DpiWatcher(window, OnDpiChanged);
+        ApplyDpiScale(_dpiWatcher.GetCurrentDpiScale());
 
         io.BackendFlags |= ImGuiBackendFlags.RendererHasVtxOffset;
-        // Enable Docking
         io.ConfigFlags |= ImGuiConfigFlags.DockingEnable;
 
         CreateDeviceResources();
@@ -81,6 +96,45 @@ public class ImGuiBackend : IDisposable
         _windowWidth = width;
         _windowHeight = height;
     }
+
+    private void OnDpiChanged(float scale)
+    {
+        _dpiScaleChanged = true;
+        _nextDpiScale = scale;
+    }
+
+    private void ApplyDpiScale(float scale)
+    {
+        unsafe
+        {
+            var io = ImGuiNET.ImGui.GetIO();
+            io.Fonts.Clear();
+
+            ImFontConfigPtr config = ImGuiNative.ImFontConfig_ImFontConfig();
+            config.SizePixels = MathF.Round(FONT_SIZE * scale);
+            config.OversampleH = 3;
+            config.OversampleV = 1;
+            config.PixelSnapH = true;
+            config.GlyphOffset = (System.Numerics.Vector2)new Vector2(0, 1);
+            io.Fonts.AddFontDefault(config);
+            ImGuiNative.ImFontConfig_destroy(config);
+
+            RecreateFontDeviceTexture();
+
+            io.FontGlobalScale = 1.0f;
+
+            var style = ImGuiNET.ImGui.GetStyle();
+            style.WindowPadding = (System.Numerics.Vector2)(_baseWindowPadding * scale);
+            style.FramePadding = (System.Numerics.Vector2)(_baseFramePadding * scale);
+            style.ItemSpacing = (System.Numerics.Vector2)(_baseItemSpacing * scale);
+            style.ScrollbarSize = _baseScrollbarSize * scale;
+            style.GrabMinSize = _baseGrabMinSize * scale;
+
+
+
+        }
+    }
+
 
     public void DestroyDeviceObjects()
     {
@@ -205,6 +259,7 @@ void main()
     /// </summary>
     public void Render()
     {
+
         if (_frameBegun)
         {
             _frameBegun = false;
@@ -218,9 +273,17 @@ void main()
     /// </summary>
     public void Update(GameWindow wnd, double deltaSeconds)
     {
+        _dpiWatcher.Update();
+
         if (_frameBegun)
         {
             ImGuiNET.ImGui.Render();
+        }
+
+        if (_dpiScaleChanged)
+        {
+            ApplyDpiScale(_nextDpiScale);
+            _dpiScaleChanged = false;
         }
 
         SetPerFrameImGuiData(deltaSeconds);

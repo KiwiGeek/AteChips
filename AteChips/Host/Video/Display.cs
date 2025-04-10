@@ -2,6 +2,7 @@
 using OpenTK.Windowing.Common;
 using OpenTK.Windowing.Desktop;
 using System;
+using System.Runtime.CompilerServices;
 using GameWindow = OpenTK.Windowing.Desktop.GameWindow;
 using IDrawable = AteChips.Core.Shared.Interfaces.IDrawable;
 using OpenTK.Windowing.GraphicsLibraryFramework;

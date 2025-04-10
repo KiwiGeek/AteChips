@@ -3,6 +3,8 @@ using AteChips.Core;
 using AteChips.Core.Shared.Interfaces;
 using AteChips.Shared.Settings;
 using ImGuiNET;
+using OpenTK.Graphics.ES20;
+using static System.Formats.Asn1.AsnWriter;
 using Vector2 = System.Numerics.Vector2;
 
 namespace AteChips.Host.UI.ImGui;
@@ -16,34 +18,11 @@ public class ImGuiFrontEnd
     {
 
         _machine = machine;
-
-        ImGuiViewportPtr viewport = ImGuiNET.ImGui.GetMainViewport();
-        ImGuiNET.ImGui.SetNextWindowPos(viewport.Pos);
-        ImGuiNET.ImGui.SetNextWindowSize(viewport.Size);
-        ImGuiNET.ImGui.SetNextWindowViewport(viewport.ID);
-
-        ImGuiNET.ImGui.PushStyleVar(ImGuiStyleVar.WindowRounding, 0.0f);
-        ImGuiNET.ImGui.PushStyleVar(ImGuiStyleVar.WindowBorderSize, 0.0f);
-        ImGuiNET.ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, Vector2.Zero);
-
-        ImGuiWindowFlags hostWindowFlags = ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoCollapse |
-                                           ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoMove |
-                                           ImGuiWindowFlags.NoBringToFrontOnFocus | ImGuiWindowFlags.NoNavFocus |
-                                           ImGuiWindowFlags.NoBackground | ImGuiWindowFlags.NoDecoration |
-                                           ImGuiWindowFlags.MenuBar | ImGuiWindowFlags.NoSavedSettings;
-
-        ImGuiNET.ImGui.Begin("DockSpaceHost", hostWindowFlags);
-        ImGuiNET.ImGui.PopStyleVar(3);
-
-        // Create dock space here
-        ImGuiNET.ImGui.DockSpace(ImGuiNET.ImGui.GetID("MyDockSpace"), Vector2.Zero, ImGuiDockNodeFlags.None);
-        ImGuiNET.ImGui.End();
-
-        // RebuildFontAtlas();
     }
 
     public void RenderUi()
     {
+
         if (!Settings.ShowImGui) { return; }
 
         RenderConsoleMenu();
@@ -62,7 +41,8 @@ public class ImGuiFrontEnd
 
         ImGuiNET.ImGui.SetNextWindowPos(topLeft, ImGuiCond.Always);
 
-         ImGuiWindowFlags flags =
+        ImGuiWindowFlags flags =
+             ImGuiWindowFlags.AlwaysAutoResize |
              ImGuiWindowFlags.NoTitleBar |
              ImGuiWindowFlags.NoResize |
              ImGuiWindowFlags.NoMove |
