@@ -3,7 +3,7 @@
 namespace AteChips.Shared.Video;
 public class VideoOutputSignal
 {
-    public string Name { get; init; } = "Main";
+    public string Name { get; init; }
     public IRenderSurface Surface { get; init; }
     public bool IsConnected { get; set; } = true;
 

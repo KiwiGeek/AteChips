@@ -1,7 +1,9 @@
-﻿namespace AteChips.Core.Shared.Interfaces;
+﻿using AteChips.Core.Shared.Timing;
 
-public interface IUpdatable
+namespace AteChips.Core.Shared.Interfaces;
+
+public interface IUpdatable : IHertzDriven
 {
     bool Update(double gameTime);
-    byte UpdatePriority { get; }
+
 }

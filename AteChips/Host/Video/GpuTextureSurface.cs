@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Diagnostics;
 using OpenTK.Graphics.OpenGL4;
 
 namespace AteChips.Host.Video;
@@ -8,11 +7,10 @@ public class GpuTextureSurface : IRenderSurface, IDisposable
     public int Width { get; }
     public int Height { get; }
 
-    public IntPtr TextureId => (IntPtr)_glTextureId;
-    public object NativeHandle => TextureId;             // For generality
+    public IntPtr TextureId => _glTextureId;
 
     private int _glTextureId = -1;
-    private bool _isInitialized = false;
+    private bool _isInitialized;
 
     public GpuTextureSurface(int width, int height)
     {

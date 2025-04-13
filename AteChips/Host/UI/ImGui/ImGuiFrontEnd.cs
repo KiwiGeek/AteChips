@@ -3,8 +3,6 @@ using AteChips.Core;
 using AteChips.Core.Shared.Interfaces;
 using AteChips.Shared.Settings;
 using ImGuiNET;
-using OpenTK.Graphics.ES20;
-using static System.Formats.Asn1.AsnWriter;
 using Vector2 = System.Numerics.Vector2;
 
 namespace AteChips.Host.UI.ImGui;
@@ -13,11 +11,16 @@ public class ImGuiFrontEnd
 
     private readonly ImGuiFileDialog _fileBrowser = new();
     private readonly IEmulatedMachine _machine;
+    private readonly IVisualizable[] _visualizables;
 
-    public ImGuiFrontEnd(IEmulatedMachine machine, int width, int height)
+    public ImGuiFrontEnd(IEmulatedMachine machine, IVisualizable[] hostVisualizables)
     {
 
         _machine = machine;
+        _visualizables = _machine.Visualizables
+            .Union(hostVisualizables)
+            .OrderBy(visual => visual.GetType().Name)
+            .ToArray();
     }
 
     public void RenderUi()
@@ -27,8 +30,7 @@ public class ImGuiFrontEnd
 
         RenderConsoleMenu();
 
-        foreach (IVisualizable status in Program.Chip8EmulatorRuntime.Visuals
-                     .OrderBy(visual => visual.GetType().Name).ToList())
+        foreach (IVisualizable status in _visualizables)
         {
             if (status.VisualShown) { status.Visualize(); }
         }
@@ -53,7 +55,7 @@ public class ImGuiFrontEnd
 
          ImGuiNET.ImGui.Begin("Debug Console", flags);
          // Top button bar
-         foreach (IVisualizable visual in Program.Chip8EmulatorRuntime.Visuals)
+         foreach (IVisualizable visual in _visualizables)
          {
              if (ImGuiWidgets.ToggleButton(visual.GetType().Name, visual.VisualShown))
              {

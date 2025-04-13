@@ -8,5 +8,4 @@ public interface IRenderSurface
     int Height { get; }
 
     IntPtr TextureId { get; }      // For ImGui
-    object NativeHandle { get; }   // OpenGL, Vulkan, etc
 }

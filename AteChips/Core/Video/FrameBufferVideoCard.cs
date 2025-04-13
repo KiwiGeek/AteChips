@@ -2,16 +2,17 @@
 using System.Collections.Generic;
 using AteChips.Core.Shared.Interfaces;
 using AteChips.Shared.Video;
+using AteChips.Core.Shared.Timing;
 
 namespace AteChips.Core;
-public class FrameBufferRenderer : IVideoCard
+public class FrameBufferVideoCard : IVideoCard, IUpdatable
 {
     private readonly GpuTextureSurface _renderSurface;
     private readonly VideoOutputSignal _output;
     private readonly byte[] _pixelBuffer;
     private readonly FrameBuffer _framebuffer;
 
-    public FrameBufferRenderer(FrameBuffer frameBuffer)
+    public FrameBufferVideoCard(FrameBuffer frameBuffer)
     {
         _framebuffer = frameBuffer;
         _pixelBuffer = new byte[frameBuffer.Width * frameBuffer.Height * 4]; // RGBA format
@@ -41,6 +42,7 @@ public class FrameBufferRenderer : IVideoCard
         }
     }
     public IEnumerable<VideoOutputSignal> GetOutputs() => [_output];
+    public VideoOutputSignal GetPrimaryOutput() => _output;
 
     public void Update()
     {
@@ -48,4 +50,15 @@ public class FrameBufferRenderer : IVideoCard
         _renderSurface.Update(_pixelBuffer);
     }
 
+    public double FrequencyHz => 60; // or whatever makes sense
+
+    public byte UpdatePriority => UpdatePriorities.Gpu; // optional; lower = higher priority
+
+    public bool Update(double deltaTime)
+    {
+        Update(); // Call your existing update logic
+        return false;
+    }
+
+    public string Name => GetType().Name;
 }

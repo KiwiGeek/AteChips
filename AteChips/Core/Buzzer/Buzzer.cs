@@ -1,5 +1,6 @@
 ﻿using AteChips.Core.Shared.Base;
 using System;
+using AteChips.Core.Shared.Timing;
 
 namespace AteChips.Core;
 
@@ -182,5 +183,6 @@ public partial class Buzzer : VisualizableHardware, IBuzzer
 
     }
 
-    public byte UpdatePriority => 1;
+    public double FrequencyHz => 60;
+    public byte UpdatePriority => UpdatePriorities.Buzzer;
 }

@@ -2,10 +2,10 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using AteChips.Core;
 using AteChips.Core.Shared.Interfaces;
 
-namespace AteChips;
+namespace AteChips.Core;
+
 public class Chip8Machine : IEmulatedMachine
 {
 
@@ -22,14 +22,16 @@ public class Chip8Machine : IEmulatedMachine
     private readonly Keypad _keypad;
     private readonly Buzzer _buzzer;
     private readonly Cpu _cpu;
+    private readonly FrameBufferVideoCard _gpu;
 
     public Chip8Machine()
     {
         _frameBuffer = Register<FrameBuffer>();         // relies on nothing
         _ram = Register<Ram>();                         // relies on IEmulatedMachine
-        _keypad = Register<Keypad>();               // relies on nothing
+        _keypad = Register<Keypad>();                   // relies on nothing
         _buzzer = Register<Buzzer>();                   // relies on IRam
         _cpu = Register<Cpu>();                         // relies on IFrameBuffer, IKeyboard and IRam
+        _gpu = Register<FrameBufferVideoCard>();         // relies on IFrameBuffer   
 
         // build the device lists.
         Resettables = _devices.OfType<IResettable>().ToList();

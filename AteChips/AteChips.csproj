@@ -2,6 +2,11 @@
 	<PropertyGroup>
 		<OutputType>WinExe</OutputType>
 		<TargetFramework>net8.0</TargetFramework>
+		<RuntimeIdentifiers>
+			win-x64;win-x86;win-arm64;win-arm;
+			linux-x64;linux-arm;linux-arm64;
+			osx-x64;osx-arm64
+		</RuntimeIdentifiers>
 		<RollForward>Major</RollForward>
 		<PublishReadyToRun>false</PublishReadyToRun>
 		<TieredCompilation>false</TieredCompilation>
@@ -29,16 +34,10 @@
 		<DefineConstants>$(DefineConstants);LINUX;NOT_WINDOWS;NOT_OSX</DefineConstants>
 	</PropertyGroup>
 
-	<!--<ItemGroup>
-		<Compile Include="Host/UI/ImGui/DpiWatcher.cs" />
-		<Compile Update="Host/UI/ImGui/DpiWatcher.Win.cs">
-			<DependentUpon>DpiWatcher.cs</DependentUpon>
-		</Compile>
-		<Compile Update="Host/UI/ImGui/DpiWatcher.NotWin.cs">
-			<DependentUpon>DpiWatcher.cs</DependentUpon>
-		</Compile>
-	</ItemGroup>-->
-
+	<ItemGroup>
+	  <None Remove="**\*.glsl" />
+	  <EmbeddedResource Include="**\*.glsl" />
+	</ItemGroup>
 
 	<ItemGroup>
 		<PackageReference Include="ImGui.NET" Version="1.91.6.1" />
@@ -47,7 +46,6 @@
 
 	<ItemGroup>
 		<Folder Include="Host\Audio\" />
-		<Folder Include="Host\Input\" />
 		<Folder Include="Shared\Utilities\" />
 	</ItemGroup>
 

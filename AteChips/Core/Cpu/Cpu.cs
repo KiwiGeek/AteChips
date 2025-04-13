@@ -1,14 +1,12 @@
 ﻿using System;
 using AteChips.Core.Shared.Base;
+using AteChips.Core.Shared.Timing;
 
 namespace AteChips.Core;
 
 public partial class Cpu : VisualizableHardware, ICpu
 {
-
-    private double _cycleAccumulator = 0;
-    private const double ClockRateHz = 1_400;
-    private const double SecondsPerCycle = 1.0 / ClockRateHz;
+    public double FrequencyHz => 1400;
 
     // todo: adjustable hertz
     // todo: quirks mode
@@ -21,9 +19,10 @@ public partial class Cpu : VisualizableHardware, ICpu
         Stepping
     }
 
-    private bool _waitingForKey = false;
-    private byte _waitingRegister = 0;
-    private byte? _pressedKey = null; // track which key was pressed
+    private bool _waitingForKey;
+    private byte _waitingRegister;
+    private byte? _pressedKey; // track which key was pressed
+    private readonly bool _requireKeyRelease = true;
 
 
     // CPU registers
@@ -93,6 +92,9 @@ public partial class Cpu : VisualizableHardware, ICpu
         DelayTimer = 0x00;
         SoundTimer = 0x00;
         ExecutionState = CpuExecutionState.Paused;
+        _waitingForKey = false;
+        _waitingRegister = 0;
+        _pressedKey = null;
     }
 
     public void Step()
@@ -114,51 +116,58 @@ public partial class Cpu : VisualizableHardware, ICpu
     public bool Update(double delta)
     {
 
-        _cycleAccumulator += delta;
-
-        if (ExecutionState == CpuExecutionState.Paused) { return false; }
-
-        while (_cycleAccumulator >= SecondsPerCycle)
+        if (ExecutionState == CpuExecutionState.Paused)
         {
-            if (ExecutionState == CpuExecutionState.Running ||
-                ExecutionState == CpuExecutionState.Stepping)
-            {
-                Tick(); // Execute one instruction
-            }
+            return false;
+        }
 
-            _cycleAccumulator -= SecondsPerCycle;
-
-            // If we were stepping, run only one instruction then pause
-            if (ExecutionState == CpuExecutionState.Stepping)
-            {
-                ExecutionState = CpuExecutionState.Paused;
-                break;
-            }
+        Tick();
+        
+        if (ExecutionState == CpuExecutionState.Stepping)
+        {
+            ExecutionState = CpuExecutionState.Paused;
         }
 
         return false;
-
     }
 
     void Tick()
     {
+        if (DelayTimer > 0) { DelayTimer -= 1; }
+        if (SoundTimer > 0) { SoundTimer -= 1; }
 
         if (_waitingForKey)
         {
-            if (_pressedKey is null && _keypad.FirstKeyPressedThisFrame.HasValue)
+            if (_requireKeyRelease)
             {
-                _pressedKey = _keypad.FirstKeyPressedThisFrame.Value;
-                Registers[_waitingRegister] = _pressedKey.Value;
+                if (_pressedKey is null && _keypad.FirstKeyPressedThisFrame.HasValue)
+                {
+                    // Register the pressed key but keep waiting
+                    _pressedKey = _keypad.FirstKeyPressedThisFrame.Value;
+                    Registers[_waitingRegister] = _pressedKey.Value;
+                    return; // still waiting for release
+                }
+
+                if (_pressedKey is not null && _keypad.KeypadButtons[_pressedKey.Value] == Keypad.KeyState.Up)
+                {
+                    _waitingForKey = false;
+                    _pressedKey = null;
+                }
+
                 return;
             }
-
-            if (_pressedKey is not null && _keypad.KeypadButtons[_pressedKey.Value] == Keypad.KeyState.Up)
+            else
             {
-                _waitingForKey = false;
-                _pressedKey = null;
-            }
+                // Modern behavior: resume immediately on key press
+                if (_keypad.FirstKeyPressedThisFrame.HasValue)
+                {
+                    byte key = _keypad.FirstKeyPressedThisFrame.Value;
+                    Registers[_waitingRegister] = key;
+                    _waitingForKey = false;
+                }
 
-            return;
+                return;
+            }
         }
 
         ushort instruction = Fetch();
@@ -217,7 +226,7 @@ public partial class Cpu : VisualizableHardware, ICpu
         //throw new NotImplementedException($"Instruction {instruction:X4} not implemented.");
     }
 
-    public byte UpdatePriority => 2;
+    public byte UpdatePriority => UpdatePriorities.Cpu;
 
     Action ClearDisplay() => () => _frameBuffer.Reset();
 
@@ -487,6 +496,7 @@ public partial class Cpu : VisualizableHardware, ICpu
 
         _waitingForKey = true;
         _waitingRegister = x;
+
     };
 
     Action JumpRegisterRelative(ushort instruction) => () =>

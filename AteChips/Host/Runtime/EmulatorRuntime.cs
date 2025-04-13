@@ -1,42 +1,39 @@
-﻿using System.Diagnostics;
-using System.Linq;
+﻿using AteChips.Core.Shared.Interfaces;
+using AteChips.Core.Shared.Timing;
 using AteChips.Host.Video;
-using System.Collections.Generic;
+using AteChips.Shared.Video;
+using System;
+using System.Diagnostics;
 using AteChips.Core;
-using AteChips.Core.Shared.Interfaces;
+using AteChips.Host.Input;
 
 namespace AteChips.Host.Runtime;
 public class EmulatorRuntime
 {
-    private readonly Display _display;
-    private readonly IUpdatable[] _updatables;
-    private readonly IDrawable[] _drawables;
-    private readonly bool _singleDrawable;
-    private readonly FrameBufferRenderer _gpu;
-    private readonly List<IVisualizable> _visuals = [];
-    public IEnumerable<IVisualizable> Visuals => _visuals;
+    private readonly TimingController _timing;
 
     public EmulatorRuntime(IEmulatedMachine emulatedMachine)
     {
 
-        // Extract the framebuffer from the emulated video memory
-        FrameBuffer framebuffer = emulatedMachine.Get<FrameBuffer>();
-        _gpu = new FrameBufferRenderer(framebuffer);      // Core-level GPU
-
-        _display = new Display(emulatedMachine);
-        _display.Connect(_gpu.GetOutputs().First()); // Hook up video output
-
-        _drawables = [_display];
-        _singleDrawable = _drawables.Length == 1;
-
-        _updatables = emulatedMachine.Updatables.ToArray();
-
-        // build the visuals list
-        foreach (IVisualizable visualizable in emulatedMachine.Visualizables.ToList())
+        // Create the timing controller, and register all our hardware with it.
+        _timing = new TimingController();
+        foreach (IUpdatable updatable in emulatedMachine.Updatables)
         {
-            _visuals.Add(visualizable);
+            _timing.Register(updatable);
         }
-        _visuals.Add(_display);
+
+        // Create the display and connect it to the first video output. Manually register it
+        // with the timing controller. For now, we just support one display.
+        Display display = new(emulatedMachine);
+        VideoOutputSignal signal = emulatedMachine.Get<IVideoCard>().GetPrimaryOutput();
+        display.Connect(signal);
+        _timing.Register(display);
+
+        // Create the keyboard, and register it with the timing controller; it should happen
+        // before the keypad, so that the keypad can use it.
+        Keyboard keyboard = new (display, emulatedMachine.Get<Keypad>());
+        _timing.Register(keyboard);
+
     }
 
     public void Run()
@@ -48,40 +45,29 @@ public class EmulatorRuntime
 
         while (!done)
         {
+            // Calculate elapsed time since last frame
             long currentTicks = Stopwatch.GetTimestamp();
             double delta = (currentTicks - previousTicks) / (double)frequency;
             previousTicks = currentTicks;
 
-            done = Update(delta);
-            Render(delta);
+            // Advance the global game time
+            _timing.Tick(delta);
+
+            // Get any IHertzDriven components that are due to run
+            ReadOnlySpan<ScheduledTarget> dueNow = _timing.GetDueTargets();
+
+            foreach (ScheduledTarget scheduledTarget in dueNow)
+            {
+                switch (scheduledTarget.Target)
+                {
+                    case IUpdatable updatable:
+                        done |= updatable.Update(scheduledTarget.DeltaTime);
+                        break;
+                    case IDrawable drawable:
+                        done |= drawable.Draw(_timing.GameTime);
+                        break;
+                }
+            }
         }
     }
-
-    private bool Update(double delta)
-    {
-        bool allDone = false;
-
-        foreach (IUpdatable updatable in _updatables)
-        {
-            allDone |= updatable.Update(delta);
-        }
-
-        return allDone;
-    }
-
-    private void Render(double delta)
-    {
-        _gpu.Update();
-        if (_singleDrawable)
-        {
-            _display.Draw(delta);
-            return;
-        }
-
-        foreach (IDrawable drawable in _drawables)
-        {
-            drawable.Draw(delta);
-        }
-    }
-
 }
