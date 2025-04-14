@@ -5,7 +5,9 @@ using AteChips.Shared.Video;
 using System;
 using System.Diagnostics;
 using AteChips.Core;
+using AteChips.Host.Audio;
 using AteChips.Host.Input;
+using AteChips.Shared.Sound;
 
 namespace AteChips.Host.Runtime;
 public class EmulatorRuntime
@@ -25,15 +27,19 @@ public class EmulatorRuntime
         // Create the display and connect it to the first video output. Manually register it
         // with the timing controller. For now, we just support one display.
         Display display = new(emulatedMachine);
-        VideoOutputSignal signal = emulatedMachine.Get<IVideoCard>().GetPrimaryOutput();
-        display.Connect(signal);
+        VideoOutputSignal videoSignal = emulatedMachine.Get<IVideoCard>().GetPrimaryOutput();
+        display.Connect(videoSignal);
         _timing.Register(display);
+
+        // create the sound device and connect it to the audio output. 
+        StereoSpeakers outputSpeakers = new();
+        IAudioOutputSignal monoSignal = emulatedMachine.Get<ISoundDevice>().GetPrimaryOutput();
+        outputSpeakers.Connect(monoSignal, [0, 1]); // stereo
 
         // Create the keyboard, and register it with the timing controller; it should happen
         // before the keypad, so that the keypad can use it.
         Keyboard keyboard = new (display, emulatedMachine.Get<Keypad>());
         _timing.Register(keyboard);
-
     }
 
     public void Run()

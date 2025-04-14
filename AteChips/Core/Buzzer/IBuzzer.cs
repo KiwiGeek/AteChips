@@ -2,6 +2,6 @@
 
 namespace AteChips.Core;
 
-internal interface IBuzzer : IUpdatable, IResettable, IVisualizable
+internal interface IBuzzer : ISoundDevice
 {
 }
