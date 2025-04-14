@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Linq;
 using System.Runtime.InteropServices;
 using AteChips.Shared.Sound;
 using PortAudioSharp;
@@ -12,7 +11,8 @@ internal class StereoSpeakers
     private const int _sampleRate = 44100;
     int _channels = 2;
     int _framesPerRequest;
-    uint _samplesPerRequest; 
+    uint _samplesPerRequest;
+    private Stream? _stream; // store as a field
 
     internal StereoSpeakers()
     {
@@ -62,53 +62,34 @@ internal class StereoSpeakers
                 return StreamCallbackResult.Continue;
             }
 
-            int outputChannels = _channelMap?.Max() + 1 ?? _connectedSignal.Channels;
+            int outputChannels = 2;
             int sampleCount = (int)(frameCount * outputChannels);
             float[] outBuffer = new float[sampleCount];
-            int sourceChannels = _connectedSignal.Channels;
+            int sourceChannels = 2;
 
-            if (sourceChannels == 1)
+            // For now, just pull directly if formats match (no remap). We're assuming a stereo signal
+            int requested = (int)(frameCount * sourceChannels);
+            int written = _connectedSignal.GetAudioSamples(outBuffer, 0, requested);
+            if (written < requested)
             {
-                int monoSamples = (int)frameCount;
-                float[] monoBuffer = new float[monoSamples];
-
-                int written = _connectedSignal.GetAudioSamples(monoBuffer, 0, monoSamples);
-
-                for (int i = 0; i < written; i++)
-                {
-                    float sample = monoBuffer[i];
-                    foreach (int ch in _channelMap)
-                    {
-                        outBuffer[i * outputChannels + ch] = sample;
-                    }
-                }
-            }
-            else
-            {
-                // For now, just pull directly if formats match (no remap)
-                int requested = (int)(frameCount * sourceChannels);
-                int written = _connectedSignal.GetAudioSamples(outBuffer, 0, requested);
-                if (written < requested)
-                {
-                    Array.Clear(outBuffer, written, requested - written);
-                }
+                Array.Clear(outBuffer, written, requested - written);
             }
 
             Marshal.Copy(outBuffer, 0, output, sampleCount);
             return StreamCallbackResult.Continue;
         };
 
-        Stream stream =
+        _stream =
             new Stream(
-                inParams: null, 
+                inParams: null,
                 outParams: outputParameters,
-                sampleRate: _sampleRate, 
-                framesPerBuffer: _samplesPerRequest, 
+                sampleRate: _sampleRate,
+                framesPerBuffer: _samplesPerRequest,
                 streamFlags: StreamFlags.NoFlag,
-                callback: callback, 
+                callback: callback,
                 userData: IntPtr.Zero);
 
-        stream.Start();
+        _stream.Start();
     }
 
     private static unsafe void ZeroBuffer(IntPtr output, uint totalSamples)

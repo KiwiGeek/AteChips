@@ -1,10 +1,9 @@
 ﻿using System.Collections.Generic;
-using AteChips.Core.Shared.Timing;
 using AteChips.Shared.Sound;
 
 namespace AteChips.Core.Shared.Interfaces;
 
-public interface ISoundDevice : IVisualizable, IHardware, IResettable, IHertzDriven
+public interface ISoundDevice : IVisualizable, IHardware, IResettable
 {
 
     IEnumerable<IAudioOutputSignal> GetOutputs();

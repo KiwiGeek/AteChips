@@ -2,12 +2,6 @@
 
 public interface IAudioOutputSignal
 {
-
-    /// <summary>
-    /// Gets the number of audio channels (1 = mono, 2 = stereo).
-    /// </summary>
-    int Channels { get; }
-
     /// <summary>
     /// Fills the provided buffer with audio samples.
     /// The buffer should be interleaved if stereo (L, R, L, R...).

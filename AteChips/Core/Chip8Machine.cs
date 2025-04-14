@@ -23,13 +23,15 @@ public class Chip8Machine : IEmulatedMachine
     private readonly Buzzer _buzzer;
     private readonly Cpu _cpu;
     private readonly FrameBufferVideoCard _gpu;
+    private readonly CrystalTimer _timer;
 
     public Chip8Machine()
     {
         _frameBuffer = Register<FrameBuffer>();         // relies on nothing
         _ram = Register<Ram>();                         // relies on IEmulatedMachine
         _keypad = Register<Keypad>();                   // relies on nothing
-        _buzzer = Register<Buzzer>();                   // relies on IRam
+        _timer = Register<CrystalTimer>();              // relies on nothing
+        _buzzer = Register<Buzzer>();                   // relies on ICrystalTimer
         _cpu = Register<Cpu>();                         // relies on IFrameBuffer, IKeyboard and IRam
         _gpu = Register<FrameBufferVideoCard>();         // relies on IFrameBuffer   
 
@@ -105,6 +107,8 @@ public class Chip8Machine : IEmulatedMachine
                 nameof(Keypad) => _keypad,
                 nameof(Buzzer) => _buzzer,
                 nameof(Cpu) => _cpu,
+                nameof(FrameBufferVideoCard) => _gpu,
+                nameof(CrystalTimer) => _timer,
                 _ => throw new InvalidOperationException("can't resolve dependency")
             };
 

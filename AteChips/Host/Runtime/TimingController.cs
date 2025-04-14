@@ -26,12 +26,10 @@ public sealed class TimingController
     private readonly List<ScheduledEntry> _scheduled = new();
     private ScheduledTarget[] _dueBuffer = new ScheduledTarget[32];
     private int _dueCount = 0;
-
-    private double _gameTime;
     private double _lastFrameTime;
 
-    public double GameTime => _gameTime;
-    public double DeltaTime => _gameTime - _lastFrameTime;
+    public double GameTime { get; private set; }
+    public double DeltaTime => GameTime - _lastFrameTime;
 
     public void Register(IHertzDriven component)
     {
@@ -40,23 +38,25 @@ public sealed class TimingController
 
     public void Tick(double deltaTime)
     {
-        _lastFrameTime = _gameTime;
-        _gameTime += deltaTime;
+        _lastFrameTime = GameTime;
+        GameTime += deltaTime;
     }
 
     public ReadOnlySpan<ScheduledTarget> GetDueTargets()
     {
         _dueCount = 0;
 
-        foreach (var entry in _scheduled)
+        foreach (ScheduledEntry entry in _scheduled)
         {
-            double delta = _gameTime - entry.LastRunTime;
+            double delta = GameTime - entry.LastRunTime;
             if (delta >= entry.Interval)
             {
-                entry.LastRunTime = _gameTime;
+                entry.LastRunTime = GameTime;
 
                 if (_dueCount >= _dueBuffer.Length)
+                {
                     Array.Resize(ref _dueBuffer, _dueBuffer.Length * 2);
+                }
 
                 _dueBuffer[_dueCount++] = new ScheduledTarget(entry.Target, delta);
             }
@@ -75,8 +75,8 @@ public sealed class TimingController
             bool xIsDrawable = x.Target is IDrawable;
             bool yIsDrawable = y.Target is IDrawable;
 
-            if (xIsDrawable && !yIsDrawable) return 1;
-            if (!xIsDrawable && yIsDrawable) return -1;
+            if (xIsDrawable && !yIsDrawable) { return 1; }
+            if (!xIsDrawable && yIsDrawable) { return -1; }
 
             return x.Target.UpdatePriority.CompareTo(y.Target.UpdatePriority);
         }

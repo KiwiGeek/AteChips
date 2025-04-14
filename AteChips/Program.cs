@@ -5,9 +5,13 @@ namespace AteChips;
 
 public static class Program
 {
-    public static Chip8Machine Chip8Machine { get; } = new ();
-    public static EmulatorRuntime Chip8EmulatorRuntime { get; } = new(Chip8Machine);
+    public static Chip8Machine Chip8Machine = null!;
+    public static EmulatorRuntime Chip8EmulatorRuntime = null!;
 
-    public static void Main() => Chip8EmulatorRuntime.Run();
-
+    public static void Main()
+    {
+        Chip8Machine = new();
+        Chip8EmulatorRuntime = new(Chip8Machine);
+        Chip8EmulatorRuntime.Run();
+    }
 }

@@ -53,33 +53,35 @@ public partial class Cpu : VisualizableHardware, ICpu
     // the value.
     public byte DelayTimer
     {
-        get => _ram.GetByte(Ram.DELAY_TIMER_ADDR);
-        set => _ram.SetByte(Ram.DELAY_TIMER_ADDR, value);
+        get => _crystalTimer.DelayTimer;
+        set => _crystalTimer.DelayTimer = value;
     }
 
     // the sound timer is stored in ram at 0x01F9. This is the pointer, not 
     // the value.
     public byte SoundTimer
     {
-        get => _ram.GetByte(Ram.SOUND_TIMER_ADDR);
-        set => _ram.SetByte(Ram.SOUND_TIMER_ADDR, value);
+        get => _crystalTimer.SoundTimer;
+        set => _crystalTimer.SoundTimer = value;
     }
 
-    public ref byte GetSoundTimerRef() => ref _ram.Memory[Ram.SOUND_TIMER_ADDR];
+    //public ref byte GetSoundTimerRef() => ref _ram.Memory[Ram.SOUND_TIMER_ADDR];
 
     // hardware we care about
     private readonly FrameBuffer _frameBuffer;
     private readonly Keypad _keypad;
     private readonly Ram _ram;
+    private readonly CrystalTimer _crystalTimer;
 
     // the CPU state
     public CpuExecutionState ExecutionState { get; private set; } = CpuExecutionState.Running;
 
-    public Cpu(FrameBuffer frameBuffer, Keypad keypad, Ram ram)
+    public Cpu(FrameBuffer frameBuffer, Keypad keypad, Ram ram, CrystalTimer timer)
     {
         _frameBuffer = frameBuffer;
         _keypad = keypad;
         _ram = ram;
+        _crystalTimer = timer; 
         Reset();
     }
 
@@ -133,9 +135,6 @@ public partial class Cpu : VisualizableHardware, ICpu
 
     void Tick()
     {
-        if (DelayTimer > 0) { DelayTimer -= 1; }
-        if (SoundTimer > 0) { SoundTimer -= 1; }
-
         if (_waitingForKey)
         {
             if (_requireKeyRelease)
