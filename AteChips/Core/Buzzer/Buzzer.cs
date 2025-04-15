@@ -1,10 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
+using AteChips.Core.Shared.Base;
 using AteChips.Shared.Sound;
 
 namespace AteChips.Core;
 
-public partial class Buzzer : IBuzzer
+public partial class Buzzer : VisualizableHardware, IBuzzer
 {
     private readonly IAudioOutputSignal _output;
     private double _phase;
@@ -21,8 +22,6 @@ public partial class Buzzer : IBuzzer
         _timer = timer;
     }
 
-    public bool VisualShown { get; set; }
-    public string Name => nameof(Buzzer);
     public void Reset()
     {
     }

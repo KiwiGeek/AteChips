@@ -1,10 +1,12 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Runtime.InteropServices;
+using AteChips.Shared.Runtime;
 using AteChips.Shared.Sound;
 using PortAudioSharp;
 
 namespace AteChips.Host.Audio;
-internal class StereoSpeakers
+internal class StereoSpeakers : IHostService, IAudioOutputDevice
 {
     private IAudioOutputSignal? _connectedSignal;
     private int[]? _channelMap; // maps output buffer channels to source signal
@@ -97,5 +99,20 @@ internal class StereoSpeakers
         int byteCount = (int)(totalSamples * sizeof(float));
         Span<byte> span = new Span<byte>((void*)output, byteCount);
         span.Clear();
+    }
+
+    public IEnumerable<(int, string)> GetHardwareDevices()
+    {
+        for (int i = 0; i != PortAudio.DeviceCount; ++i)
+        {
+            DeviceInfo info = PortAudio.GetDeviceInfo(i);
+            if (info.maxOutputChannels >= 2 && Math.Abs(info.defaultSampleRate - _sampleRate) < 0.1)
+            {
+                // skip extra windows API hosts; potentially need to do the same for MacOS and Tux hosts, but I haven't tested yet.
+                if (PortAudioHostInfoHelper.GetHostApiName(i).IsOneOf(["MME", "Windows WDM-KS", "Windows WASAPI"])) { continue; }
+
+                yield return (i, $"{info.name}");
+            }
+        }
     }
 }

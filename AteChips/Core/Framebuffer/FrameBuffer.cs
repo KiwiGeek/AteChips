@@ -1,5 +1,6 @@
 ﻿using System;
 using AteChips.Core.Shared.Interfaces;
+using AteChips.Shared.Runtime;
 
 namespace AteChips.Core;
 
@@ -48,5 +49,12 @@ public class FrameBuffer : IHardware, IResettable
         Pixels = new bool[width * height];
         Width = width;
         Height = height;
+    }
+
+    private IHostBridge? _hostBridge;
+
+    public virtual void SetHostBridge(IHostBridge hostBridge)
+    {
+        _hostBridge = hostBridge;
     }
 }

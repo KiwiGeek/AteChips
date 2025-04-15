@@ -12,5 +12,7 @@ public interface IEmulatedMachine
     T Get<T>() where T : IHardware;
     IEnumerable<T> GetAll<T>() where T : IHardware;
 
+    
+
     void Reset();
 }

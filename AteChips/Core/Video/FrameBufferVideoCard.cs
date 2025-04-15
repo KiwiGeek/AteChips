@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using AteChips.Core.Shared.Interfaces;
 using AteChips.Shared.Video;
 using AteChips.Core.Shared.Timing;
+using AteChips.Shared.Runtime;
 
 namespace AteChips.Core;
 public class FrameBufferVideoCard : IVideoCard, IUpdatable
@@ -61,4 +62,11 @@ public class FrameBufferVideoCard : IVideoCard, IUpdatable
     }
 
     public string Name => GetType().Name;
+
+    private IHostBridge? _hostBridge;
+
+    public virtual void SetHostBridge(IHostBridge hostBridge)
+    {
+        _hostBridge = hostBridge;
+    }
 }

@@ -1,5 +1,10 @@
 ﻿using ImGuiNET;
 using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using AteChips.Core.Shared.Interfaces;
+using AteChips.Host.Audio;
+using System.Linq;
 
 // ReSharper disable once CheckNamespace
 namespace AteChips.Core;
@@ -9,8 +14,64 @@ public partial class Buzzer
 
     private float[] _waveformPreview = [];
 
-    public void Visualize()
+    private int? _selectedDeviceIndex;
+    private List<(int Index, string Name)>? _deviceList;
+    private bool _deviceListInitialized = false;
+
+    public override void Visualize()
     {
+
+        ImGui.Begin("Buzzer", ImGuiWindowFlags.AlwaysAutoResize);
+
+        // Get a list of all available sound devices from the Speakers
+        StereoSpeakers speakers = HostBridge?.Get<StereoSpeakers>()!;
+
+        // on first call, initialize the device list
+        if (_deviceList is null)
+        {
+            _deviceList = speakers.GetHardwareDevices().ToList();
+            _selectedDeviceIndex = 0;       // todo, get this from the speaker.
+        }
+
+        Debug.Assert(_selectedDeviceIndex != null);
+        Debug.Assert(_deviceList != null);
+
+        // Show the combo with the current selection label
+        string previewValue = _deviceList!.ElementAt(_selectedDeviceIndex.Value).Name;
+
+        if (ImGui.BeginCombo("Output Device", previewValue))
+        {
+            // Only populate devices when the combo is opened
+            if (!_deviceListInitialized && speakers != null)
+            {
+                _deviceList = speakers.GetHardwareDevices().ToList();
+                _deviceListInitialized = true;
+            }
+
+            for (int i = 0; i < _deviceList.Count; i++)
+            {
+                bool isSelected = (i == _selectedDeviceIndex);
+                if (ImGui.Selectable(_deviceList[i].Item2, isSelected))
+                {
+                    _selectedDeviceIndex = i;
+                    //speakers?.SelectDevice(_deviceList[i].Item1);
+                }
+
+                if (isSelected)
+                    ImGui.SetItemDefaultFocus();
+            }
+
+            ImGui.EndCombo();
+        }
+        else
+        {
+            // Reset so next open will re-enumerate
+            _deviceListInitialized = false;
+        }
+
+
+        ImGui.End();
+
 
         //if (_waveformPreview.Length == 0)
         //{
