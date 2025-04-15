@@ -106,9 +106,9 @@ internal class StereoSpeakers : IHostService, IAudioOutputDevice
         for (int i = 0; i != PortAudio.DeviceCount; ++i)
         {
             DeviceInfo info = PortAudio.GetDeviceInfo(i);
-            if (info.maxOutputChannels >= 2 && Math.Abs(info.defaultSampleRate - _sampleRate) < 0.1)
+            if (info.maxOutputChannels >= 2)
             {
-                // skip extra windows API hosts; potentially need to do the same for MacOS and Tux hosts, but I haven't tested yet.
+                // skip extra windows API hosts; potentially need to do the same for Tux hosts, but I haven't tested yet.
                 if (PortAudioHostInfoHelper.GetHostApiName(i).IsOneOf(["MME", "Windows WDM-KS", "Windows WASAPI"])) { continue; }
 
                 yield return (i, $"{info.name}");
