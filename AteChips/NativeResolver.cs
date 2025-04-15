@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Reflection;
 using System.Runtime.InteropServices;
@@ -51,7 +51,7 @@ static class NativeResolver
                     RuntimeInformation.IsOSPlatform(OSPlatform.OSX) ? "osx" :
                     "linux";
 
-        string arch = RuntimeInformation.OSArchitecture switch
+        string arch = RuntimeInformation.ProcessArchitecture switch
         {
             Architecture.X64 => "x64",
             Architecture.X86 => "x86",
