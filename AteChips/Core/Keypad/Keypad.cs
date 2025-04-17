@@ -1,6 +1,7 @@
 ﻿using System;
 using AteChips.Core.Shared.Interfaces;
 using AteChips.Core.Shared.Timing;
+using AteChips.Shared.Runtime;
 
 namespace AteChips.Core;
 
@@ -88,5 +89,12 @@ public class Keypad : IHardware, IResettable, IKeypad
 
             _lastKeyStates[i] = isDown;
         }
+    }
+
+    private IHostBridge? _hostBridge;
+
+    public virtual void SetHostBridge(IHostBridge hostBridge)
+    {
+        _hostBridge = hostBridge;
     }
 }

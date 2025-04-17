@@ -1,4 +1,5 @@
 ﻿using AteChips.Core.Shared.Timing;
+using AteChips.Shared.Runtime;
 
 namespace AteChips.Core;
 
@@ -26,4 +27,11 @@ public class CrystalTimer : ICrystalTimer
     }
 
     public string Name => nameof(CrystalTimer);
+
+    private IHostBridge? _hostBridge;
+
+    public virtual void SetHostBridge(IHostBridge hostBridge)
+    {
+        _hostBridge = hostBridge;
+    }
 }

@@ -1,5 +1,10 @@
-﻿using ImGuiNET;
-using System;
+﻿using System;
+using ImGuiNET;
+using System.Collections.Generic;
+using System.Diagnostics;
+using AteChips.Host.Audio;
+using System.Linq;
+using AteChips.Host.UI.ImGui;
 
 // ReSharper disable once CheckNamespace
 namespace AteChips.Core;
@@ -7,43 +12,114 @@ namespace AteChips.Core;
 public partial class Buzzer
 {
 
-    private float[] _waveformPreview = [];
+    private int? _selectedDeviceIndex;
+    private List<(int Index, string Name)>? _deviceList;
+    private bool _deviceListInitialized = false;
 
-    public void Visualize()
+    public override void Visualize()
     {
+
+        ImGui.Begin("Buzzer", ImGuiWindowFlags.AlwaysAutoResize);
+
+        // Get a list of all available sound devices from the Speakers
+        StereoSpeakers speakers = HostBridge?.Get<StereoSpeakers>()!;
+
+        // on first call, initialize the device list
+        if (_deviceList is null)
+        {
+            _deviceList = speakers.GetHardwareDevices().ToList();
+            _selectedDeviceIndex = 0;       // todo, get this from the speaker.
+        }
+
+        Debug.Assert(_selectedDeviceIndex != null);
+        Debug.Assert(_deviceList != null);
+
+        // Show the combo with the current selection label
+        string previewValue = _deviceList!.ElementAt(_selectedDeviceIndex.Value).Name;
+
+        if (ImGui.BeginCombo("Output Device", previewValue))
+        {
+            // Only populate devices when the combo is opened
+            if (!_deviceListInitialized && speakers != null)
+            {
+                _deviceList = speakers.GetHardwareDevices().ToList();
+                _deviceListInitialized = true;
+            }
+
+            for (int i = 0; i < _deviceList.Count; i++)
+            {
+                bool isSelected = (i == _selectedDeviceIndex);
+                if (ImGui.Selectable($"{_deviceList[i].Item2}##{_deviceList[i].Item1}", isSelected))
+                {
+                    _selectedDeviceIndex = i;
+                    speakers!.ConnectToSoundDevice(_deviceList[i].Item1);
+                }
+
+                if (isSelected)
+                    ImGui.SetItemDefaultFocus();
+            }
+
+            ImGui.EndCombo();
+        }
+        else
+        {
+            // Reset so next open will re-enumerate
+            _deviceListInitialized = false;
+        }
+
+        ImGuiWidgets.Checkbox("Mute", () => IsMuted, v => IsMuted = v);
+        ImGuiWidgets.SliderFloat("Pitch (Hz)", () => Pitch, v => Pitch = v, 50f, 2000f);
+        ImGuiWidgets.SliderFloat("Volume", () => Volume, v => Volume = v);
+
+
+        string[] waveforms = Enum.GetNames<WaveformTypes>();
+        string selectedName = Waveform.ToString();
+
+        if (ImGui.BeginCombo("Waveform", selectedName))
+        {
+            foreach (string wave in waveforms)
+            {
+                bool isSelected = wave == selectedName;
+                if (ImGui.Selectable(wave, isSelected))
+                {
+                    Waveform = Enum.Parse<WaveformTypes>(wave);
+                }
+
+                if (isSelected)
+                {
+                    ImGui.SetItemDefaultFocus();
+                }
+            }
+            ImGui.EndCombo();
+        }
+
+
+        if (!TestTone)
+        {
+            if (ImGui.Button("Test"))
+            {
+                TestTone = true;
+            }
+        }
+        else
+        {
+            if (ImGui.Button("Stop"))
+            {
+                TestTone = false;
+            }
+        }
+
+        ImGui.End();
+
 
         //if (_waveformPreview.Length == 0)
         //{
         //    GeneratePreviewBuffer();
         //}
 
-        //ImGui.Begin("Buzzer", ImGuiWindowFlags.AlwaysAutoResize);
+    //private float[] _waveformPreview = [];
 
-        //if (ImGui.Checkbox("Mute", ref _isMuted))
-        //{
-        //   // GenerateSoundWave();
-        //}
 
-        //string[] waveforms = Enum.GetNames<WaveformType>();
-        //string selectedName = Waveform.ToString();
-
-        //if (ImGui.BeginCombo("Waveform", selectedName))
-        //{
-        //    foreach (string wave in waveforms)
-        //    {
-        //        bool isSelected = wave == selectedName;
-        //        if (ImGui.Selectable(wave, isSelected))
-        //        {
-        //            Waveform = Enum.Parse<WaveformType>(wave);
-        //        }
-
-        //        if (isSelected)
-        //        {
-        //            ImGui.SetItemDefaultFocus();
-        //        }
-        //    }
-        //    ImGui.EndCombo();
-        //}
 
         //if (Waveform == WaveformType.Pulse)
         //{
@@ -66,35 +142,6 @@ public partial class Buzzer
         //    ImGui.SliderInt("Steps", ref _stairSteps, 2, 32);
         //   // GenerateSoundWave();
         //}
-
-        //float pitchHz = Pitch;
-        //if (ImGui.SliderFloat("Pitch (Hz)", ref pitchHz, 50f, 2000f))
-        //{
-        //    Pitch = pitchHz;
-        //  //  GenerateSoundWave();
-        //}
-
-        //float volume = Volume;
-        //if (ImGui.SliderFloat("Volume", ref volume, 0f, 1f))
-        //{
-        //    Volume = volume;
-        //   // GenerateSoundWave();
-        //}
-
-        ////if (_buzzerInstance.State == SoundState.Playing)
-        ////{
-        ////    if (ImGui.Button("Stop"))
-        ////    {
-        ////        _buzzerInstance.Stop();
-        ////    }
-        ////}
-        ////else
-        ////{
-        ////    if (ImGui.Button("Play"))
-        ////    {
-        ////        _buzzerInstance.Play();
-        ////    }
-        ////}
 
         //if (_waveformPreview.Length > 0)
         //{

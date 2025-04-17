@@ -8,11 +8,14 @@ using AteChips.Core;
 using AteChips.Host.Audio;
 using AteChips.Host.Input;
 using AteChips.Shared.Sound;
+using AteChips.Shared.Runtime;
 
 namespace AteChips.Host.Runtime;
 public class EmulatorRuntime
 {
     private readonly TimingController _timing;
+    private readonly HostBridge _hostBridge;
+    public IHostBridge HostBridge => _hostBridge;
 
     public EmulatorRuntime(IEmulatedMachine emulatedMachine)
     {
@@ -40,6 +43,11 @@ public class EmulatorRuntime
         // before the keypad, so that the keypad can use it.
         Keyboard keyboard = new (display, emulatedMachine.Get<Keypad>());
         _timing.Register(keyboard);
+
+        // Create the HostBridge, and register emulator services to it.
+        _hostBridge = new HostBridge();
+        _hostBridge.Register(outputSpeakers);
+        emulatedMachine.Get<ISoundDevice>().SetHostBridge(_hostBridge);
     }
 
     public void Run()

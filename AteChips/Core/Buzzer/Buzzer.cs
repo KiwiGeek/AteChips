@@ -1,10 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Numerics;
+using AteChips.Core.Shared.Base;
 using AteChips.Shared.Sound;
 
 namespace AteChips.Core;
 
-public partial class Buzzer : IBuzzer
+public partial class Buzzer : VisualizableHardware, IBuzzer
 {
     private readonly IAudioOutputSignal _output;
     private double _phase;
@@ -13,7 +15,7 @@ public partial class Buzzer : IBuzzer
     public int SampleRate => 44100;
     public int Channels => 2;
     private readonly CrystalTimer _timer;
-
+    private float _currentAmplitude = 0f;
 
     public Buzzer(CrystalTimer timer)
     {
@@ -21,11 +23,15 @@ public partial class Buzzer : IBuzzer
         _timer = timer;
     }
 
-    public bool VisualShown { get; set; }
-    public string Name => nameof(Buzzer);
     public void Reset()
     {
     }
+
+    public bool IsMuted { get; set; } = false;
+    public float Pitch { get; set; } = 440;
+    public float Volume { get; set; } = 0.6f;
+    public bool TestTone { get; set; } = false;
+    public WaveformTypes Waveform { get; set; } = WaveformTypes.Square;
 
     public IEnumerable<IAudioOutputSignal> GetOutputs() => [_output];
 
@@ -33,15 +39,20 @@ public partial class Buzzer : IBuzzer
 
     public int GetSamples(float[] buffer, int offset, int count)
     {
+        bool makingSound = (_timer.SoundTimer > 0 && !IsMuted) || TestTone;
 
-        bool makingSound = _timer.SoundTimer > 0;
+        double frequency = Pitch;
+        double phaseIncrement = TAU * frequency / SampleRate;
 
-        double phaseIncrement = TAU * FREQUENCY / SampleRate;
+        float targetAmplitude = makingSound ? Volume : 0f;
+        float fadeSpeed = 1f / (SampleRate * 0.01f); // fade over 10ms
 
         for (int i = 0; i < count; i += Channels)
         {
+            // Smoothly approach target amplitude
+            _currentAmplitude += (targetAmplitude - _currentAmplitude) * fadeSpeed;
 
-            float sample = makingSound ? (float)Math.Sin(_phase) : 0;
+            float sample = GetWaveform(_phase) * _currentAmplitude;
 
             buffer[offset + i] = sample;       // Left
             buffer[offset + i + 1] = sample;   // Right
@@ -55,4 +66,21 @@ public partial class Buzzer : IBuzzer
 
         return count;
     }
+
+    protected float GetWaveform(double phase)
+    {
+        return Waveform switch
+        {
+            WaveformTypes.Square => SquareWave(phase),
+            WaveformTypes.Sawtooth => SawtoothWave(phase),
+            WaveformTypes.Triangle => TriangleWave(phase),
+            WaveformTypes.Sine => SineWave(phase),
+            _ => throw new ArgumentOutOfRangeException(nameof(Waveform), "Invalid waveform type")
+        };
+    }
+
+    public static float SineWave(double phase) => (float) Math.Sin(phase);
+    public static float SquareWave(double phase) => Math.Sin(phase) >= 0 ? 1f : -1f;
+    public static float TriangleWave(double phase) => (float)(2.0 / Math.PI * Math.Asin(Math.Sin(phase)));
+    public static float SawtoothWave(double phase) => (float)(2.0 * (phase / TAU) - 1.0);
 }
