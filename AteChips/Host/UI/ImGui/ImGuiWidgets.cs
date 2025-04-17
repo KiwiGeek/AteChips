@@ -17,6 +17,15 @@ public static class ImGuiWidgets
         }
     }
 
+    public static void SliderFloat(string label, Func<float> getter, Action<float> setter, float min = 0.0f, float max = 1.0f)
+    {
+        float value = getter();
+        if (ImGuiNET.ImGui.SliderFloat(label, ref value, min, max))
+        {
+            setter(value);
+        }
+    }
+
     public static bool ToggleButton(string label, bool active)
     {
         ImGuiNET.ImGui.PushStyleColor(ImGuiCol.Button,

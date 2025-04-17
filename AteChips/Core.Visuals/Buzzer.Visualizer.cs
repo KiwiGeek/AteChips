@@ -1,18 +1,16 @@
-﻿using ImGuiNET;
-using System;
+﻿using System;
+using ImGuiNET;
 using System.Collections.Generic;
 using System.Diagnostics;
-using AteChips.Core.Shared.Interfaces;
 using AteChips.Host.Audio;
 using System.Linq;
+using AteChips.Host.UI.ImGui;
 
 // ReSharper disable once CheckNamespace
 namespace AteChips.Core;
 
 public partial class Buzzer
 {
-
-    private float[] _waveformPreview = [];
 
     private int? _selectedDeviceIndex;
     private List<(int Index, string Name)>? _deviceList;
@@ -51,10 +49,10 @@ public partial class Buzzer
             for (int i = 0; i < _deviceList.Count; i++)
             {
                 bool isSelected = (i == _selectedDeviceIndex);
-                if (ImGui.Selectable(_deviceList[i].Item2, isSelected))
+                if (ImGui.Selectable($"{_deviceList[i].Item2}##{_deviceList[i].Item1}", isSelected))
                 {
                     _selectedDeviceIndex = i;
-                    //speakers?.SelectDevice(_deviceList[i].Item1);
+                    speakers!.ConnectToSoundDevice(_deviceList[i].Item1);
                 }
 
                 if (isSelected)
@@ -69,6 +67,47 @@ public partial class Buzzer
             _deviceListInitialized = false;
         }
 
+        ImGuiWidgets.Checkbox("Mute", () => IsMuted, v => IsMuted = v);
+        ImGuiWidgets.SliderFloat("Pitch (Hz)", () => Pitch, v => Pitch = v, 50f, 2000f);
+        ImGuiWidgets.SliderFloat("Volume", () => Volume, v => Volume = v);
+
+
+        string[] waveforms = Enum.GetNames<WaveformTypes>();
+        string selectedName = Waveform.ToString();
+
+        if (ImGui.BeginCombo("Waveform", selectedName))
+        {
+            foreach (string wave in waveforms)
+            {
+                bool isSelected = wave == selectedName;
+                if (ImGui.Selectable(wave, isSelected))
+                {
+                    Waveform = Enum.Parse<WaveformTypes>(wave);
+                }
+
+                if (isSelected)
+                {
+                    ImGui.SetItemDefaultFocus();
+                }
+            }
+            ImGui.EndCombo();
+        }
+
+
+        if (!TestTone)
+        {
+            if (ImGui.Button("Test"))
+            {
+                TestTone = true;
+            }
+        }
+        else
+        {
+            if (ImGui.Button("Stop"))
+            {
+                TestTone = false;
+            }
+        }
 
         ImGui.End();
 
@@ -78,33 +117,9 @@ public partial class Buzzer
         //    GeneratePreviewBuffer();
         //}
 
-        //ImGui.Begin("Buzzer", ImGuiWindowFlags.AlwaysAutoResize);
+    //private float[] _waveformPreview = [];
 
-        //if (ImGui.Checkbox("Mute", ref _isMuted))
-        //{
-        //   // GenerateSoundWave();
-        //}
 
-        //string[] waveforms = Enum.GetNames<WaveformType>();
-        //string selectedName = Waveform.ToString();
-
-        //if (ImGui.BeginCombo("Waveform", selectedName))
-        //{
-        //    foreach (string wave in waveforms)
-        //    {
-        //        bool isSelected = wave == selectedName;
-        //        if (ImGui.Selectable(wave, isSelected))
-        //        {
-        //            Waveform = Enum.Parse<WaveformType>(wave);
-        //        }
-
-        //        if (isSelected)
-        //        {
-        //            ImGui.SetItemDefaultFocus();
-        //        }
-        //    }
-        //    ImGui.EndCombo();
-        //}
 
         //if (Waveform == WaveformType.Pulse)
         //{
@@ -127,35 +142,6 @@ public partial class Buzzer
         //    ImGui.SliderInt("Steps", ref _stairSteps, 2, 32);
         //   // GenerateSoundWave();
         //}
-
-        //float pitchHz = Pitch;
-        //if (ImGui.SliderFloat("Pitch (Hz)", ref pitchHz, 50f, 2000f))
-        //{
-        //    Pitch = pitchHz;
-        //  //  GenerateSoundWave();
-        //}
-
-        //float volume = Volume;
-        //if (ImGui.SliderFloat("Volume", ref volume, 0f, 1f))
-        //{
-        //    Volume = volume;
-        //   // GenerateSoundWave();
-        //}
-
-        ////if (_buzzerInstance.State == SoundState.Playing)
-        ////{
-        ////    if (ImGui.Button("Stop"))
-        ////    {
-        ////        _buzzerInstance.Stop();
-        ////    }
-        ////}
-        ////else
-        ////{
-        ////    if (ImGui.Button("Play"))
-        ////    {
-        ////        _buzzerInstance.Play();
-        ////    }
-        ////}
 
         //if (_waveformPreview.Length > 0)
         //{
