@@ -52,7 +52,7 @@ public partial class Buzzer : VisualizableHardware, IBuzzer
             // Smoothly approach target amplitude
             _currentAmplitude += (targetAmplitude - _currentAmplitude) * fadeSpeed;
 
-            float sample = GetWaveform(_phase) * _currentAmplitude;
+            float sample = GetWaveformSample(_phase) * _currentAmplitude * GetNormalizationFactor(Waveform);
 
             buffer[offset + i] = sample;       // Left
             buffer[offset + i + 1] = sample;   // Right
@@ -67,7 +67,16 @@ public partial class Buzzer : VisualizableHardware, IBuzzer
         return count;
     }
 
-    protected float GetWaveform(double phase)
+    public static float GetNormalizationFactor(WaveformTypes type) => type switch
+    {
+        WaveformTypes.Sine => 1.0f,
+        WaveformTypes.Square => 0.5f,
+        WaveformTypes.Triangle => 1.0f,
+        WaveformTypes.Sawtooth => 0.6f,
+        _ => 1.0f
+    };
+
+    protected float GetWaveformSample(double phase)
     {
         return Waveform switch
         {

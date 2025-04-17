@@ -5,6 +5,8 @@ using System.Diagnostics;
 using AteChips.Host.Audio;
 using System.Linq;
 using AteChips.Host.UI.ImGui;
+using System.Runtime.InteropServices;
+using AteChips.Shared.Runtime;
 
 // ReSharper disable once CheckNamespace
 namespace AteChips.Core;
@@ -108,6 +110,52 @@ public partial class Buzzer
                 TestTone = false;
             }
         }
+
+
+        ImGui.Text("Waveform Preview");
+
+        // === Preview Parameters ===
+        const float timeWindowSeconds = 0.05f; // 50ms
+        int sampleCount = (int)(SampleRate * timeWindowSeconds);
+        Span<float> waveform = stackalloc float[sampleCount];
+
+        double phase = 0.0;
+        double phaseIncrement = Math.PI * 2 * Pitch / SampleRate;
+
+        for (int i = 0; i < sampleCount; i++)
+        {
+            waveform[i] = GetWaveformSample(phase) * Volume;
+            phase += phaseIncrement;
+            if (phase >= Math.PI * 2)
+                phase -= Math.PI * 2;
+        }
+
+        // === Plot Waveform ===
+        System.Numerics.Vector2 size = new(400, 120); // Plot size
+        System.Numerics.Vector2 cursor = ImGui.GetCursorScreenPos();
+        ImGui.PlotLines("##waveform", ref MemoryMarshal.GetReference(waveform), sampleCount, 0, null, -1f, 1f, size);
+
+        // === Overlay Drawing ===
+        var drawList = ImGui.GetWindowDrawList();
+
+        // Midline (horizontal center)
+        float midY = cursor.Y + size.Y / 2f;
+        drawList.AddLine(
+            new System.Numerics.Vector2(cursor.X, midY),
+            new System.Numerics.Vector2(cursor.X + size.X, midY),
+            ImGui.GetColorU32(new System.Numerics.Vector4(0f, 1f, 0f, 0.2f))
+        );
+
+        // Scanlines every 8 pixels
+        for (int y = 0; y < size.Y; y += 8)
+        {
+            drawList.AddLine(
+                new System.Numerics.Vector2(cursor.X, cursor.Y + y),
+                new System.Numerics.Vector2(cursor.X + size.X, cursor.Y + y),
+                ImGui.GetColorU32(new System.Numerics.Vector4(0f, 1f, 0f, 0.05f))
+            );
+        }
+
 
         ImGui.End();
 
