@@ -19,13 +19,11 @@ public sealed class TimingController
             Interval = interval;
             LastRunTime = 0;
         }
-
-        public bool IsDue(double gameTime) => (gameTime - LastRunTime) >= Interval;
     }
 
-    private readonly List<ScheduledEntry> _scheduled = new();
+    private readonly List<ScheduledEntry> _scheduled = [];
     private ScheduledTarget[] _dueBuffer = new ScheduledTarget[32];
-    private int _dueCount = 0;
+    private int _dueCount;
     private double _lastFrameTime;
 
     public double GameTime { get; private set; }
@@ -62,23 +60,9 @@ public sealed class TimingController
             }
         }
 
-        Array.Sort(_dueBuffer, 0, _dueCount, CompositeComparer.Instance);
+        Array.Sort(_dueBuffer, 0, _dueCount, TimingComparer);
         return _dueBuffer.AsSpan(0, _dueCount);
     }
 
-    private sealed class CompositeComparer : IComparer<ScheduledTarget>
-    {
-        public static readonly CompositeComparer Instance = new();
-
-        public int Compare(ScheduledTarget x, ScheduledTarget y)
-        {
-            bool xIsDrawable = x.Target is IDrawable;
-            bool yIsDrawable = y.Target is IDrawable;
-
-            if (xIsDrawable && !yIsDrawable) { return 1; }
-            if (!xIsDrawable && yIsDrawable) { return -1; }
-
-            return x.Target.UpdatePriority.CompareTo(y.Target.UpdatePriority);
-        }
-    }
+    private static IComparer<ScheduledTarget> TimingComparer { get; } = Comparer<ScheduledTarget>.Create((x,y) => (x.Target is IDrawable && y.Target is not IDrawable) ? 1 : (x.Target is not IDrawable && y.Target is IDrawable) ? -1 : x.Target.UpdatePriority.CompareTo(y.Target.UpdatePriority));
 }

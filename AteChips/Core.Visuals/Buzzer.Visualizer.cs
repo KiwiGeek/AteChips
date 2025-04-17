@@ -6,11 +6,12 @@ using AteChips.Host.Audio;
 using System.Linq;
 using AteChips.Host.UI.ImGui;
 using System.Runtime.InteropServices;
+using AteChips.Core.Shared.Base;
 
 // ReSharper disable once CheckNamespace
 namespace AteChips.Core;
 
-public partial class Buzzer
+public partial class Buzzer : VisualizableHardware
 {
 
     private int? _selectedDeviceIndex;
@@ -28,8 +29,8 @@ public partial class Buzzer
         // on first call, initialize the device list
         if (_deviceList is null)
         {
-            _deviceList = speakers.GetHardwareDevices().ToList();
-            _selectedDeviceIndex = 0; // todo, get this from the speaker.
+            _deviceList = [.. StereoSpeakers.GetHardwareDevices()];
+            _selectedDeviceIndex = 0; // todo: get this from the speaker.
         }
 
         Debug.Assert(_selectedDeviceIndex != null);
@@ -43,21 +44,23 @@ public partial class Buzzer
             // Only populate devices when the combo is opened
             if (!_deviceListInitialized)
             {
-                _deviceList = speakers.GetHardwareDevices().ToList();
+                _deviceList = [.. StereoSpeakers.GetHardwareDevices()];
                 _deviceListInitialized = true;
             }
 
             for (int i = 0; i < _deviceList.Count; i++)
             {
                 bool isSelected = (i == _selectedDeviceIndex);
-                if (ImGui.Selectable($"{_deviceList[i].Item2}##{_deviceList[i].Item1}", isSelected))
+                if (ImGui.Selectable($"{_deviceList[i].Name}##{_deviceList[i].Index}", isSelected))
                 {
                     _selectedDeviceIndex = i;
-                    speakers.ConnectToSoundDevice(_deviceList[i].Item1);
+                    speakers.ConnectToSoundDevice(_deviceList[i].Index);
                 }
 
                 if (isSelected)
+                {
                     ImGui.SetItemDefaultFocus();
+                }
             }
 
             ImGui.EndCombo();
@@ -115,19 +118,21 @@ public partial class Buzzer
         ImGui.Text("Waveform Preview");
 
         // === Preview Parameters ===
-        const float timeWindowSeconds = 0.05f; // 50ms
-        int sampleCount = (int)(SampleRate * timeWindowSeconds);
+        const float TIME_WINDOW_SECONDS = 0.05f; // 50ms
+        int sampleCount = (int)(SampleRate * TIME_WINDOW_SECONDS);
         Span<float> waveform = stackalloc float[sampleCount];
 
         double phase = 0.0;
-        double phaseIncrement = Math.PI * 2 * Pitch / SampleRate;
+        double phaseIncrement = TAU * Pitch / SampleRate;
 
         for (int i = 0; i < sampleCount; i++)
         {
             waveform[i] = GetWaveformSample(phase) * Volume;
             phase += phaseIncrement;
-            if (phase >= Math.PI * 2)
-                phase -= Math.PI * 2;
+            if (phase >= TAU)
+            {
+                phase -= TAU;
+            }
         }
 
         // === Plot Waveform ===
@@ -136,10 +141,10 @@ public partial class Buzzer
         ImGui.PlotLines("##waveform", ref MemoryMarshal.GetReference(waveform), sampleCount, 0, null, -1f, 1f, size);
 
         // === Overlay Drawing ===
-        var drawList = ImGui.GetWindowDrawList();
+        ImDrawListPtr drawList = ImGui.GetWindowDrawList();
 
         // Midline (horizontal center)
-        float midY = cursor.Y + size.Y / 2f;
+        float midY = cursor.Y + (size.Y / 2f);
         drawList.AddLine(
             cursor with { Y = midY },
             new System.Numerics.Vector2(cursor.X + size.X, midY),

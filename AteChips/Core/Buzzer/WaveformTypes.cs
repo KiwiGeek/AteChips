@@ -5,5 +5,7 @@ public enum WaveformTypes
     Square,
     Triangle,
     Sawtooth,
-    Sine
+    Sine,
+    LaraCroftsNintetiesBoobies,
+    LaraCroftsModernBoobies
 }

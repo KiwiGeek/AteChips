@@ -73,6 +73,8 @@ public partial class Buzzer : VisualizableHardware, IBuzzer
         WaveformTypes.Square => 0.5f,
         WaveformTypes.Triangle => 1.0f,
         WaveformTypes.Sawtooth => 0.6f,
+        WaveformTypes.LaraCroftsNintetiesBoobies => 1.0f,
+        WaveformTypes.LaraCroftsModernBoobies => 1.0f,
         _ => 1.0f
     };
 
@@ -84,12 +86,16 @@ public partial class Buzzer : VisualizableHardware, IBuzzer
             WaveformTypes.Sawtooth => SawtoothWave(phase),
             WaveformTypes.Triangle => TriangleWave(phase),
             WaveformTypes.Sine => SineWave(phase),
-            _ => throw new ArgumentOutOfRangeException(nameof(Waveform), "Invalid waveform type")
+            WaveformTypes.LaraCroftsNintetiesBoobies => LaraCroftsNinetiesBoobsWave(phase),
+            WaveformTypes.LaraCroftsModernBoobies => LaraCroftsModernBoobies(phase),
+            _ => throw new InvalidOperationException("Invalid waveform type")
         };
     }
 
-    public static float SineWave(double phase) => (float) Math.Sin(phase);
-    public static float SquareWave(double phase) => Math.Sin(phase) >= 0 ? 1f : -1f;
-    public static float TriangleWave(double phase) => (float)(2.0 / Math.PI * Math.Asin(Math.Sin(phase)));
-    public static float SawtoothWave(double phase) => (float)(2.0 * (phase / TAU) - 1.0);
+    float SineWave(double phase) => (float) Math.Sin(phase);
+    float SquareWave(double phase) => Math.Sin(phase) >= 0 ? 1f : -1f;
+    float TriangleWave(double phase) => (float)(2.0 / Math.PI * Math.Asin(Math.Sin(phase)));
+    float SawtoothWave(double phase) => (float)((2.0 * (phase / TAU)) - 1.0);
+    float LaraCroftsNinetiesBoobsWave(double phase) => (phase % TAU < TAU * 0.5) ? (float)(-1.0f + (2 * (Math.Max(0.0, 1.0 - (Math.Abs((phase % TAU) - (TAU * 0.125)) / (TAU * 0.2 / 2.0))) + Math.Max(0.0, 1.0 - (Math.Abs((phase % TAU) - (TAU * 0.375)) / (TAU * 0.2 / 2.0)))))) : -1.0f;
+    float LaraCroftsModernBoobies(double phase) => phase switch { < TAU / 4 => (2 * SineWave(2 * phase)) - 1.0f, < TAU / 2 => (2 * SineWave(2 * (phase - (TAU / 4)))) - 1.0f, _ => -1.0f };
 }
