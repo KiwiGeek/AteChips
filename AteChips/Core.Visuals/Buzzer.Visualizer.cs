@@ -101,11 +101,7 @@ public partial class Buzzer : VisualizableHardware
 
         if (Waveform is WaveformTypes.Pulse or WaveformTypes.StaticBuzz or WaveformTypes.RetroLaser or WaveformTypes.MorphPulse)
         {
-            float duty = PulseDutyCycle * 100f; // Show as %
-            if (ImGui.SliderFloat("Pulse Width (%)", ref duty, 1f, 99f))
-            {
-                PulseDutyCycle = duty / 100f;
-            }
+            ImGuiWidgets.SliderFloat("Phase Duty Cycle (%)", () => PulseDutyCycle / TAU * 100f, (v) => PulseDutyCycle = (float)(v / 100.0) * TAU, 0f, 100f);
         }
 
         if (Waveform == WaveformTypes.RoundedSquare)
