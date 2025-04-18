@@ -62,7 +62,7 @@ This is a solo/experimental project at the moment, but if you’re excited about
 
 ## 📄 License
 
-MIT — free for use, modification, and hacking. Attribution appreciated.
+Unlicense License — free for use, modification, and hacking. Attribution appreciated.
 
 ---
 
