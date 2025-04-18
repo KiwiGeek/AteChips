@@ -7,6 +7,7 @@ using System.Linq;
 using AteChips.Host.UI.ImGui;
 using System.Runtime.InteropServices;
 using AteChips.Core.Shared.Base;
+using OpenTK.Graphics.OpenGL;
 
 // ReSharper disable once CheckNamespace
 namespace AteChips.Core;
@@ -98,6 +99,25 @@ public partial class Buzzer : VisualizableHardware
             ImGui.EndCombo();
         }
 
+        if (Waveform is WaveformTypes.Pulse or WaveformTypes.StaticBuzz or WaveformTypes.RetroLaser or WaveformTypes.MorphPulse)
+        {
+            float duty = PulseDutyCycle * 100f; // Show as %
+            if (ImGui.SliderFloat("Pulse Width (%)", ref duty, 1f, 99f))
+            {
+                PulseDutyCycle = duty / 100f;
+            }
+        }
+
+        if (Waveform == WaveformTypes.RoundedSquare)
+        {
+            ImGuiWidgets.SliderFloat("Sharpness", () => RoundedSharpness, (v) => RoundedSharpness = v , 1f, 40f);
+        }
+
+        if (Waveform == WaveformTypes.Staircase)
+        {
+            ImGuiWidgets.SliderInt("Steps", () => StairSteps, (v) => StairSteps = v, 2, 32);
+        }
+
 
         if (!TestTone)
         {
@@ -118,16 +138,21 @@ public partial class Buzzer : VisualizableHardware
         ImGui.Text("Waveform Preview");
 
         // === Preview Parameters ===
-        const float TIME_WINDOW_SECONDS = 0.05f; // 50ms
+        const float TIME_WINDOW_SECONDS = 0.016f; // 16ms
         int sampleCount = (int)(SampleRate * TIME_WINDOW_SECONDS);
         Span<float> waveform = stackalloc float[sampleCount];
 
-        double phase = 0.0;
-        double phaseIncrement = TAU * Pitch / SampleRate;
+        float phase = 0.0f;
+        float phaseIncrement = TAU * Pitch / SampleRate;
 
         for (int i = 0; i < sampleCount; i++)
         {
-            waveform[i] = GetWaveformSample(phase) * Volume;
+            float t = i / (float)SampleRate;
+
+            // Normalized phase version for duty check
+            float normalizedPhase = phase / TAU;
+
+            waveform[i] = GetWaveformSample(phase, t) * Volume;
             phase += phaseIncrement;
             if (phase >= TAU)
             {
@@ -163,28 +188,5 @@ public partial class Buzzer : VisualizableHardware
 
 
         ImGui.End();
-
-
-        //if (Waveform == WaveformType.Pulse)
-        //{
-        //    float duty = PulseDutyCycle * 100f; // Show as %
-        //    if (ImGui.SliderFloat("Pulse Width (%)", ref duty, 1f, 99f))
-        //    {
-        //        PulseDutyCycle = duty / 100f;
-        //       // GenerateSoundWave();
-        //    }
-        //}
-
-        //if (Waveform == WaveformType.RoundedSquare)
-        //{
-        //    ImGui.SliderFloat("Sharpness", ref _roundedSharpness, 1f, 40f);
-        //    //GenerateSoundWave();
-        //}
-
-        //if (Waveform == WaveformType.Staircase)
-        //{
-        //    ImGui.SliderInt("Steps", ref _stairSteps, 2, 32);
-        //   // GenerateSoundWave();
-        //}
     }
 }

@@ -22,6 +22,15 @@ public static class ImGuiWidgets
         }
     }
 
+    public static void SliderInt(string label, Func<int> getter, Action<int> setter, int min = 0, int max = 100)
+    {
+        int value = getter();
+        if (ImGuiNET.ImGui.SliderInt(label, ref value, min, max))
+        {
+            setter(value);
+        }
+    }
+
     public static bool ToggleButton(string label, bool active)
     {
         ImGuiNET.ImGui.PushStyleColor(ImGuiCol.Button,
