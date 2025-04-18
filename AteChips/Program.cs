@@ -5,8 +5,8 @@ namespace AteChips;
 
 public static class Program
 {
-    public static Chip8Machine Chip8Machine = null!;
-    public static EmulatorRuntime Chip8EmulatorRuntime = null!;
+    private static Chip8Machine Chip8Machine = null!;
+    private static EmulatorRuntime Chip8EmulatorRuntime = null!;
 
     public static void Main()
     {

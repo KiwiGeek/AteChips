@@ -1,9 +1,5 @@
 ﻿using ImGuiNET;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace AteChips.Host.UI.ImGui;
 public static class ImGuiWidgets
@@ -21,6 +17,15 @@ public static class ImGuiWidgets
     {
         float value = getter();
         if (ImGuiNET.ImGui.SliderFloat(label, ref value, min, max))
+        {
+            setter(value);
+        }
+    }
+
+    public static void SliderInt(string label, Func<int> getter, Action<int> setter, int min = 0, int max = 100)
+    {
+        int value = getter();
+        if (ImGuiNET.ImGui.SliderInt(label, ref value, min, max))
         {
             setter(value);
         }

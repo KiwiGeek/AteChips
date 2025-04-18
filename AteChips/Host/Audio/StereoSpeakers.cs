@@ -55,7 +55,7 @@ internal class StereoSpeakers : IHostService, IAudioOutputDevice
         if (_stream?.IsActive == true) { _stream.Stop(); }
 
         DeviceInfo deviceInfo = PortAudio.GetDeviceInfo(deviceId);
-        StreamParameters outputParameters = new StreamParameters
+        StreamParameters outputParameters = new ()
         {
             device = deviceId,
             channelCount = 2,
@@ -110,11 +110,11 @@ internal class StereoSpeakers : IHostService, IAudioOutputDevice
     private static unsafe void ZeroBuffer(IntPtr output, uint totalSamples)
     {
         int byteCount = (int)(totalSamples * sizeof(float));
-        Span<byte> span = new Span<byte>((void*)output, byteCount);
+        Span<byte> span = new ((void*)output, byteCount);
         span.Clear();
     }
 
-    public IEnumerable<(int, string)> GetHardwareDevices()
+    public static IEnumerable<(int, string)> GetHardwareDevices()
     {
         for (int i = 0; i != PortAudio.DeviceCount; ++i)
         {
