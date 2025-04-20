@@ -1,11 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
-using AteChips.Core.Shared.Base;
 using AteChips.Shared.Sound;
 
 namespace AteChips.Core;
 
-public partial class Buzzer : VisualizableHardware, IBuzzer
+public partial class Buzzer : IBuzzer
 {
     private readonly IAudioOutputSignal _output;
     private float _phase;
@@ -22,6 +21,8 @@ public partial class Buzzer : VisualizableHardware, IBuzzer
     {
         _output = new AudioOutputSignal(this);
         _timer = timer;
+
+        VisualizerInit();
     }
 
     public void Reset()
@@ -29,14 +30,14 @@ public partial class Buzzer : VisualizableHardware, IBuzzer
     }
 
     public bool IsMuted { get; set; } = false;
-    public float Pitch { get; set; } = 440;
+    public float Pitch { get; set; } = 440.0f;
     public float Volume { get; set; } = 0.6f;
     public bool TestTone { get; set; } = false;
     public float PulseDutyCycle { get; set; } = 0.25f;
     public float RoundedSharpness { get; set; } = 15.0f;
     public int StairSteps { get; set; } = 8;
 
-    public WaveformTypes Waveform { get; set; } = WaveformTypes.Square;
+    public WaveformType Waveform { get; set; } = WaveformType.Square;
 
     public IEnumerable<IAudioOutputSignal> GetOutputs() => [_output];
 
@@ -75,34 +76,34 @@ public partial class Buzzer : VisualizableHardware, IBuzzer
 
 
 
-    public static float GetNormalizationFactor(WaveformTypes type) => 0.1f;
+    public static float GetNormalizationFactor(WaveformType type) => 0.1f;
 
     protected float GetWaveformSample(float phase, float time)
     {
         return Waveform switch
         {
-            WaveformTypes.Square => SquareWave(phase),
-            WaveformTypes.Sawtooth => SawtoothWave(phase),
-            WaveformTypes.Triangle => TriangleWave(phase),
-            WaveformTypes.Pulse => PulseWave(phase),
-            WaveformTypes.Noise => NoiseWave(phase),
-            WaveformTypes.Sine => SineWave(phase),
-            WaveformTypes.HalfSine => HalfSineWave(phase),
-            WaveformTypes.RoundedSquare => RoundedSquareWave(phase),
-            WaveformTypes.Staircase => StaircaseWave(phase),
-            WaveformTypes.ChipTuneLead => ChipTuneLead(phase),
-            WaveformTypes.StaticBuzz => StaticBuzzWave(phase),
-            WaveformTypes.DirtyBass => DirtyBaseWave(phase),
-            WaveformTypes.LunarPad => LunarPadWave(phase),
-            WaveformTypes.RetroLaser => RetroLaserWave(phase),
-            WaveformTypes.SolarRamp => SolarRampWave(phase),
-            WaveformTypes.MorphPulse => MorphPulseWave(phase),
-            WaveformTypes.DetuneTwin => DeTuneTwin(phase),
-            WaveformTypes.RingByte => RingByteWave(phase),
-            WaveformTypes.BitBuzz => BitBuzzWave(phase),
-            WaveformTypes.FormantVox => FormantVoxWave(phase),
-            WaveformTypes.LaraCroftsNinetiesBoobies => LaraCroftsNinetiesBoobsWave(phase),
-            WaveformTypes.LaraCroftsModernBoobies => LaraCroftsModernBoobies(phase),
+            WaveformType.Square => SquareWave(phase),
+            WaveformType.Sawtooth => SawtoothWave(phase),
+            WaveformType.Triangle => TriangleWave(phase),
+            WaveformType.Pulse => PulseWave(phase),
+            WaveformType.Noise => NoiseWave(phase),
+            WaveformType.Sine => SineWave(phase),
+            WaveformType.HalfSine => HalfSineWave(phase),
+            WaveformType.RoundedSquare => RoundedSquareWave(phase),
+            WaveformType.Staircase => StaircaseWave(phase),
+            WaveformType.ChipTuneLead => ChipTuneLead(phase),
+            WaveformType.StaticBuzz => StaticBuzzWave(phase),
+            WaveformType.DirtyBass => DirtyBaseWave(phase),
+            WaveformType.LunarPad => LunarPadWave(phase),
+            WaveformType.RetroLaser => RetroLaserWave(phase),
+            WaveformType.SolarRamp => SolarRampWave(phase),
+            WaveformType.MorphPulse => MorphPulseWave(phase),
+            WaveformType.DetuneTwin => DeTuneTwin(phase),
+            WaveformType.RingByte => RingByteWave(phase),
+            WaveformType.BitBuzz => BitBuzzWave(phase),
+            WaveformType.FormantVox => FormantVoxWave(phase),
+            WaveformType.LaraCroftsNinetiesBoobies => LaraCroftsNinetiesBoobsWave(phase),
+            WaveformType.LaraCroftsModernBoobies => LaraCroftsModernBoobies(phase),
             _ => throw new InvalidOperationException("Invalid waveform type")
         };
     }

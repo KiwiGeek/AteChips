@@ -9,7 +9,7 @@ public partial class Ram
 
     private bool firstOpen = true;
 
-    public override void Visualize()
+    public void Visualize()
     {
 
         if (firstOpen)

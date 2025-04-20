@@ -2,7 +2,7 @@
 
 namespace AteChips.Core;
 
-public interface ICpu : IUpdatable, IResettable, IVisualizable
+public interface ICpu : IUpdatable, IResettable, IVisualizable, IHardware
 {
     
 }

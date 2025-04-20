@@ -1,10 +1,9 @@
 ﻿using System;
-using AteChips.Core.Shared.Base;
 using AteChips.Core.Shared.Timing;
 
 namespace AteChips.Core;
 
-public partial class Cpu : VisualizableHardware, ICpu
+public partial class Cpu : ICpu
 {
     public double FrequencyHz => 1400;
 

@@ -1,6 +1,6 @@
 ﻿namespace AteChips.Core;
 
-public enum WaveformTypes
+public enum WaveformType
 {
     Square,
     Triangle,

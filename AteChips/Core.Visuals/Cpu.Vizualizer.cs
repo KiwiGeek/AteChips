@@ -19,7 +19,7 @@ public partial class Cpu
 
     private bool firstOpen = true;
 
-    public override void Visualize()
+    public void Visualize()
     {
 
         if (firstOpen)
