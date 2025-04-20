@@ -41,8 +41,11 @@ public partial class Buzzer
 
     public void Visualize()
     {
-
-        ImGui.Begin("Buzzer", ImGuiWindowFlags.AlwaysAutoResize);
+        ImGui.SetNextWindowSizeConstraints(
+            new System.Numerics.Vector2(400, 300), // Min size
+            new System.Numerics.Vector2(float.MaxValue, float.MaxValue) // Max size (infinite)
+        );
+        ImGui.Begin("Buzzer");
 
         // Get a list of all available sound devices from the Speakers
         StereoSpeakers speakers = IVisualizable.HostBridge.Get<StereoSpeakers>()!;
@@ -161,23 +164,21 @@ public partial class Buzzer
             GenerateWaveformPreview();
         }
 
-        // === Plot Waveform ===
-        System.Numerics.Vector2 size = new(400, 120); // Plot size
         System.Numerics.Vector2 cursor = ImGui.GetCursorScreenPos();
+        System.Numerics.Vector2 size = ImGui.GetContentRegionAvail();
+
         ImGui.PlotLines("##waveform", ref _waveform[0], _sampleCount, 0, null, -1f, 1f, size);
 
-        // === Overlay Drawing ===
-        ImDrawListPtr drawList = ImGui.GetWindowDrawList();
-
-        // Midline (horizontal center)
+        // Midline
         float midY = cursor.Y + (size.Y / 2f);
+        ImDrawListPtr drawList = ImGui.GetWindowDrawList();
         drawList.AddLine(
             cursor with { Y = midY },
             new System.Numerics.Vector2(cursor.X + size.X, midY),
             ImGui.GetColorU32(new System.Numerics.Vector4(0f, 1f, 0f, 0.2f))
         );
 
-        // Scan lines every 8 pixels
+        // Scan lines
         for (int y = 0; y < size.Y; y += 8)
         {
             drawList.AddLine(
@@ -186,7 +187,6 @@ public partial class Buzzer
                 ImGui.GetColorU32(new System.Numerics.Vector4(0f, 1f, 0f, 0.05f))
             );
         }
-
 
         ImGui.End();
     }
