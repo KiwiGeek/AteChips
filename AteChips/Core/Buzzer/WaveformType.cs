@@ -21,7 +21,5 @@ public enum WaveformType
     RingByte,
     BitBuzz,
     FormantVox,
-    Noise,
-    LaraCroftsNinetiesBoobies,
-    LaraCroftsModernBoobies
+    Noise
 }

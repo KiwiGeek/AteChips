@@ -206,7 +206,7 @@ public partial class Buzzer
         {
             float t = i / (float)SampleRate;
 
-            _waveform[i] = GetWaveformSample(phase, t) * Volume;
+            _waveform[i] = GetWaveformSample(phase / TAU % 1f, t) * Volume;
             phase += phaseIncrement;
             if (phase >= TAU)
             {

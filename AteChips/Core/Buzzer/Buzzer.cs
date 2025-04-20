@@ -96,7 +96,7 @@ public partial class Buzzer : IBuzzer
             WaveformType.Staircase => StaircaseWave(phase),
             WaveformType.ChipTuneLead => ChipTuneLead(phase),
             WaveformType.StaticBuzz => StaticBuzzWave(phase),
-            WaveformType.DirtyBass => DirtyBaseWave(phase),
+            WaveformType.DirtyBass => DirtyBassWave(phase),
             WaveformType.LunarPad => LunarPadWave(phase),
             WaveformType.RetroLaser => RetroLaserWave(phase),
             WaveformType.SolarRamp => SolarRampWave(phase),
@@ -105,34 +105,30 @@ public partial class Buzzer : IBuzzer
             WaveformType.RingByte => RingByteWave(phase),
             WaveformType.BitBuzz => BitBuzzWave(phase),
             WaveformType.FormantVox => FormantVoxWave(phase),
-            WaveformType.LaraCroftsNinetiesBoobies => LaraCroftsNinetiesBoobsWave(phase),
-            WaveformType.LaraCroftsModernBoobies => LaraCroftsModernBoobies(phase),
             _ => throw new InvalidOperationException("Invalid waveform type")
         };
     }
 
     private static float NextFloat() => (float)Rng.NextDouble();
 
-    float SquareWave(float phase) => MathF.Sin(phase) >= 0.0f ? 1.0f : -1.0f;
-    float SawtoothWave(float phase) => (2.0f * phase - 1.0f);
-    float TriangleWave(float phase) => (2.0f / MathF.PI * MathF.Asin(MathF.Sin(phase)));
-    float PulseWave(float phase) => phase < PulseDutyCycle ? 1f : -1f;
+    float SquareWave(float phase) => phase < 0.5f ? 1f : -1f;
+    float SawtoothWave(float phase) => 2f * (phase % 1f) - 1f;
+    float TriangleWave(float phase) => 4f * MathF.Abs(phase - 0.5f) - 1f;
+    float PulseWave(float phase) => (phase % 1f) < (PulseDutyCycle / TAU) ? 1f : -1f;
     float NoiseWave(float _) => NextFloat() * 2.0f - 1.0f;
-    float SineWave(float phase) => MathF.Sin(phase);
-    float HalfSineWave(float phase) => (MathF.Abs(MathF.Sin(phase)) - 0.5f) * 2f;
-    float RoundedSquareWave(float phase) => MathF.Tanh(MathF.Sin(phase) * RoundedSharpness);
-    float StaircaseWave(float phase) => MathF.Floor(phase * MathF.Max(1, StairSteps)) / (MathF.Max(1, StairSteps) - 1f) * 2f - 1f;
-    float ChipTuneLead(float phase) => (0.6f * MathF.Sign(MathF.Sin(phase))) + (0.4f * (2f * MathF.Abs(2f * phase - 1f) - 1f));
-    float StaticBuzzWave(float phase) => (0.7f * (phase < PulseDutyCycle ? 1f : -1f)) + (0.3f * (NextFloat() * 2.0f - 1.0f));
-    float DirtyBaseWave(float phase) => 0.5f * (2f * (phase - 0.5f)) + 0.5f * (2f * MathF.Abs(2f * phase - 1f) - 1f);
+    float SineWave(float phase) => MathF.Sin(TAU * phase);
+    float HalfSineWave(float phase) => MathF.Sin(phase * TAU * 0.5f);
+    float RoundedSquareWave(float phase) => MathF.Tanh(MathF.Sin(phase * TAU) * RoundedSharpness);
+    float StaircaseWave(float phase) => (StairSteps <= 1) ? 0f : ((2f * (int)(MathF.Min((phase % 1f), 0.99999994f) * StairSteps) + 1f - StairSteps) / (StairSteps - 1f));
+    float ChipTuneLead(float phase) => (0.6f * MathF.Sign(MathF.Sin(phase * TAU))) + (0.4f * (2f * MathF.Abs(2f * (phase % 1f) - 1f) - 1f));
+    float StaticBuzzWave(float phase) => 0.7f * ((phase % 1f) < (PulseDutyCycle /TAU) ? 1f : -1f) + 0.3f * (NextFloat() * 2f - 1f);
+    float DirtyBassWave(float phase) => 0.5f * (2f * (phase - 0.5f)) + 0.5f * (2f * MathF.Abs(2f * phase - 1f) - 1f);
     float LunarPadWave(float phase) => ((0.8f * TriangleWave(phase)) + (0.2f * NoiseWave(phase)));
-    float RetroLaserWave(float phase) => (MathF.Sin(phase) * .8f) - .2f + (phase < PulseDutyCycle ? 0.4f : 0f);
-    float SolarRampWave(float phase) => (MathF.Pow(phase / TAU, 2.5f) * 2f) - 1f;
-    float MorphPulseWave(float phase) => MathF.Sin(phase) + (((phase < PulseDutyCycle) ? 1f : -1f) - MathF.Sin(phase)) * 0.4f;
-    float DeTuneTwin(float phase) => 0.75f * (MathF.Sin(phase) + (2f * MathF.Abs(2f * (phase * 0.96f / TAU % 1f) - 1f) - 1f));
-    float RingByteWave(float phase) => MathF.Sin(phase) * MathF.Sin(phase * 2f);
-    float BitBuzzWave(float phase) => MathF.Floor(MathF.Sin(phase) * 4) / 4 + 0.1f;
-    float FormantVoxWave(float phase) => 0.5f * (MathF.Sin(phase) + MathF.Sin(phase * 2.5f));
-    float LaraCroftsNinetiesBoobsWave(float phase) => (phase % TAU < TAU * 0.5) ? (float)(-1.0f + (2 * (Math.Max(0.0, 1.0 - (Math.Abs((phase % TAU) - (TAU * 0.125)) / (TAU * 0.2 / 2.0))) + Math.Max(0.0, 1.0 - (Math.Abs((phase % TAU) - (TAU * 0.375)) / (TAU * 0.2 / 2.0)))))) : -1.0f;
-    float LaraCroftsModernBoobies(float phase) => phase switch { < TAU / 4 => (2 * SineWave(2 * phase)) - 1.0f, < TAU / 2 => (2 * SineWave(2 * (phase - (TAU / 4)))) - 1.0f, _ => -1.0f };
+    float RetroLaserWave(float phase) =>  MathF.Sin(TAU * phase) * 0.8f - 0.2f + ((phase % 1f) < (PulseDutyCycle / TAU) ? 0.4f : 0f);
+    float SolarRampWave(float phase) => MathF.Pow(phase % 1f, 2.5f) * 2f - 1f;
+    float MorphPulseWave(float phase) => MathF.Sin(phase) + ((((phase %1f)  < (PulseDutyCycle /TAU)) ? 1f : -1f) - MathF.Sin(phase)) * 0.4f;
+    float DeTuneTwin(float phase) => 0.5f * (MathF.Sin(TAU * phase) + (2f * MathF.Abs(2f * (((phase) * 0.975f) % 1f) - 1f) - 1f)) *1.5f;
+    float RingByteWave(float phase) => MathF.Sign(MathF.Sin(TAU * phase)) * (MathF.Abs(MathF.Sin(TAU * phase * 8f)) > 0.5f ? 1f : -1f);
+    float BitBuzzWave(float phase) => MathF.Floor(MathF.Sin(TAU * phase) * 4) / 4 + 0.1f;
+    float FormantVoxWave(float phase) => 0.5f * (MathF.Sin(TAU * phase) + MathF.Sin(TAU * phase * 2.5f));
 }
