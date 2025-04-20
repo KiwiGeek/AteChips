@@ -16,7 +16,7 @@ public partial class Buzzer
     private int? _selectedDeviceIndex;
     private List<(int Index, string Name)>? _deviceList;
     private bool _deviceListInitialized;
-
+    private const float LOUDNESS_CURVE = 2.2f;
     const float TIME_WINDOW_SECONDS = 0.016f;
     private int _sampleCount;
     private float[] _waveform = null!;
@@ -97,7 +97,9 @@ public partial class Buzzer
 
         ImGuiWidgets.Checkbox("Mute", () => IsMuted, v => IsMuted = v);
         ImGuiWidgets.SliderFloat("Pitch (Hz)", () => Pitch, v => Pitch = v, 50f, 2000f);
-        ImGuiWidgets.SliderFloat("Volume", () => Volume, v => Volume = v);
+        ImGuiWidgets.SliderFloat("Volume", 
+            () => MathF.Pow(Volume, 1f / LOUDNESS_CURVE), 
+            value => Volume = MathF.Pow(value, LOUDNESS_CURVE));
 
         string[] waveforms = Enum.GetNames<WaveformType>();
         string selectedName = Waveform.ToString();

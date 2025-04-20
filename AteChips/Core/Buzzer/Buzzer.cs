@@ -34,7 +34,7 @@ public partial class Buzzer : IBuzzer
 
     public bool IsMuted { get; set; } = false;
     public float Pitch { get; set; } = 440.0f;
-    public float Volume { get; set; } = 0.6f;
+    public float Volume { get; set; } = 0.4f;
     public bool TestTone { get; set; } = false;
     public float PulseDutyCycle { get; set; } = 0.25f;
     public float RoundedSharpness { get; set; } = 15.0f;
