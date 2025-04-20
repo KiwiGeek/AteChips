@@ -44,8 +44,15 @@ public class EmulatorRuntime
         _timing.Register(keyboard);
 
         // Create the HostBridge, and register emulator services to it.
-        HostBridge = (IVisualizable.HostBridge as HostBridge)!;
-        HostBridge.Register(outputSpeakers);
+        if (IVisualizable.HostBridge is HostBridge hostBridge)
+        {
+            HostBridge = hostBridge;
+            HostBridge.Register(outputSpeakers);
+        }
+        else
+        {
+            throw new InvalidOperationException("IVisualizable.HostBridge is not of type HostBridge.");
+        }
     }
 
     public void Run()
