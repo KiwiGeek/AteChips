@@ -2,7 +2,7 @@
 
 namespace AteChips.Core;
 
-public interface IRam : IResettable
+public interface IRam : IResettable, IHardware, IVisualizable
 {
     
 }

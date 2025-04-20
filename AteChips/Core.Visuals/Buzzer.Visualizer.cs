@@ -5,27 +5,47 @@ using System.Diagnostics;
 using AteChips.Host.Audio;
 using System.Linq;
 using AteChips.Host.UI.ImGui;
-using System.Runtime.InteropServices;
-using AteChips.Core.Shared.Base;
-using OpenTK.Graphics.OpenGL;
+using AteChips.Core.Shared.Interfaces;
 
 // ReSharper disable once CheckNamespace
 namespace AteChips.Core;
 
-public partial class Buzzer : VisualizableHardware
+public partial class Buzzer
 {
 
     private int? _selectedDeviceIndex;
     private List<(int Index, string Name)>? _deviceList;
     private bool _deviceListInitialized;
 
-    public override void Visualize()
+    const float TIME_WINDOW_SECONDS = 0.016f;
+    private int _sampleCount;
+    private float[] _waveform = null!;
+
+    private WaveformSettings _lastVisualizedSettings;
+
+    private record struct WaveformSettings(
+        float Pitch,
+        float Volume,
+        WaveformType Waveform,
+        float DutyCycle,
+        float Sharpness,
+        int Steps
+    );
+
+    private void VisualizerInit()
+    {
+        // calculate duration and initialize the visualization preview waveform
+        _sampleCount = (int)(SampleRate * TIME_WINDOW_SECONDS);
+        _waveform = new float[_sampleCount];
+    }
+
+    public void Visualize()
     {
 
         ImGui.Begin("Buzzer", ImGuiWindowFlags.AlwaysAutoResize);
 
         // Get a list of all available sound devices from the Speakers
-        StereoSpeakers speakers = HostBridge?.Get<StereoSpeakers>()!;
+        StereoSpeakers speakers = IVisualizable.HostBridge.Get<StereoSpeakers>()!;
 
         // on first call, initialize the device list
         if (_deviceList is null)
@@ -76,8 +96,7 @@ public partial class Buzzer : VisualizableHardware
         ImGuiWidgets.SliderFloat("Pitch (Hz)", () => Pitch, v => Pitch = v, 50f, 2000f);
         ImGuiWidgets.SliderFloat("Volume", () => Volume, v => Volume = v);
 
-
-        string[] waveforms = Enum.GetNames<WaveformTypes>();
+        string[] waveforms = Enum.GetNames<WaveformType>();
         string selectedName = Waveform.ToString();
 
         if (ImGui.BeginCombo("Waveform", selectedName))
@@ -87,7 +106,7 @@ public partial class Buzzer : VisualizableHardware
                 bool isSelected = wave == selectedName;
                 if (ImGui.Selectable(wave, isSelected))
                 {
-                    Waveform = Enum.Parse<WaveformTypes>(wave);
+                    Waveform = Enum.Parse<WaveformType>(wave);
                 }
 
                 if (isSelected)
@@ -99,17 +118,21 @@ public partial class Buzzer : VisualizableHardware
             ImGui.EndCombo();
         }
 
-        if (Waveform is WaveformTypes.Pulse or WaveformTypes.StaticBuzz or WaveformTypes.RetroLaser or WaveformTypes.MorphPulse)
+        if (Waveform is WaveformType.Pulse or WaveformType.StaticBuzz or WaveformType.RetroLaser
+            or WaveformType.MorphPulse)
         {
-            ImGuiWidgets.SliderFloat("Phase Duty Cycle (%)", () => PulseDutyCycle / TAU * 100f, (v) => PulseDutyCycle = (float)(v / 100.0) * TAU, 0f, 100f);
+            ImGuiWidgets.SliderFloat("Phase Duty Cycle (%)", 
+                () => PulseDutyCycle / TAU * 100f,
+                (v) => PulseDutyCycle = (float)(v / 100.0) * TAU, 
+                0f, 100f);
         }
 
-        if (Waveform == WaveformTypes.RoundedSquare)
+        if (Waveform == WaveformType.RoundedSquare)
         {
-            ImGuiWidgets.SliderFloat("Sharpness", () => RoundedSharpness, (v) => RoundedSharpness = v , 1f, 40f);
+            ImGuiWidgets.SliderFloat("Sharpness", () => RoundedSharpness, (v) => RoundedSharpness = v, 1f, 40f);
         }
 
-        if (Waveform == WaveformTypes.Staircase)
+        if (Waveform == WaveformType.Staircase)
         {
             ImGuiWidgets.SliderInt("Steps", () => StairSteps, (v) => StairSteps = v, 2, 32);
         }
@@ -133,33 +156,15 @@ public partial class Buzzer : VisualizableHardware
 
         ImGui.Text("Waveform Preview");
 
-        // === Preview Parameters ===
-        const float TIME_WINDOW_SECONDS = 0.016f; // 16ms
-        int sampleCount = (int)(SampleRate * TIME_WINDOW_SECONDS);
-        Span<float> waveform = stackalloc float[sampleCount];
-
-        float phase = 0.0f;
-        float phaseIncrement = TAU * Pitch / SampleRate;
-
-        for (int i = 0; i < sampleCount; i++)
+        if (NeedsToGenerateWaveform)
         {
-            float t = i / (float)SampleRate;
-
-            // Normalized phase version for duty check
-            float normalizedPhase = phase / TAU;
-
-            waveform[i] = GetWaveformSample(phase, t) * Volume;
-            phase += phaseIncrement;
-            if (phase >= TAU)
-            {
-                phase -= TAU;
-            }
+            GenerateWaveformPreview();
         }
 
         // === Plot Waveform ===
         System.Numerics.Vector2 size = new(400, 120); // Plot size
         System.Numerics.Vector2 cursor = ImGui.GetCursorScreenPos();
-        ImGui.PlotLines("##waveform", ref MemoryMarshal.GetReference(waveform), sampleCount, 0, null, -1f, 1f, size);
+        ImGui.PlotLines("##waveform", ref _waveform[0], _sampleCount, 0, null, -1f, 1f, size);
 
         // === Overlay Drawing ===
         ImDrawListPtr drawList = ImGui.GetWindowDrawList();
@@ -184,5 +189,29 @@ public partial class Buzzer : VisualizableHardware
 
 
         ImGui.End();
+    }
+
+    private bool NeedsToGenerateWaveform => _lastVisualizedSettings != CurrentSettings;
+    private WaveformSettings CurrentSettings =>
+        new(Pitch, Volume, Waveform, PulseDutyCycle, RoundedSharpness, StairSteps);
+
+    private void GenerateWaveformPreview()
+    {
+        float phase = 0.0f;
+        float phaseIncrement = TAU * Pitch / SampleRate;
+
+        for (int i = 0; i < _sampleCount; i++)
+        {
+            float t = i / (float)SampleRate;
+
+            _waveform[i] = GetWaveformSample(phase, t) * Volume;
+            phase += phaseIncrement;
+            if (phase >= TAU)
+            {
+                phase -= TAU;
+            }
+        }
+
+        _lastVisualizedSettings = CurrentSettings;
     }
 }

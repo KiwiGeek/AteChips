@@ -14,8 +14,7 @@ namespace AteChips.Host.Runtime;
 public class EmulatorRuntime
 {
     private readonly TimingController _timing;
-    private readonly HostBridge _hostBridge;
-    public IHostBridge HostBridge => _hostBridge;
+    public IHostBridge HostBridge;
 
     public EmulatorRuntime(IEmulatedMachine emulatedMachine)
     {
@@ -45,9 +44,8 @@ public class EmulatorRuntime
         _timing.Register(keyboard);
 
         // Create the HostBridge, and register emulator services to it.
-        _hostBridge = new HostBridge();
-        _hostBridge.Register(outputSpeakers);
-        emulatedMachine.Get<ISoundDevice>().SetHostBridge(_hostBridge);
+        HostBridge = (IVisualizable.HostBridge as HostBridge)!;
+        HostBridge.Register(outputSpeakers);
     }
 
     public void Run()

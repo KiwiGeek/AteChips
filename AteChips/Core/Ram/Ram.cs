@@ -1,10 +1,9 @@
 ﻿using System;
-using AteChips.Core.Shared.Base;
 using AteChips.Core.Shared.Interfaces;
 
 namespace AteChips.Core;
 
-public partial class Ram : VisualizableHardware, IRam
+public partial class Ram : IRam
 {
     public const int FontStartAddress = 0x50;
     private static readonly byte[] FONT_DATA =
