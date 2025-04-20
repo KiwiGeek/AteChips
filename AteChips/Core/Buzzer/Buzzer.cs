@@ -27,6 +27,9 @@ public partial class Buzzer : IBuzzer
 
     public void Reset()
     {
+        // No need to flush anything; just let the host produce silence when needed.
+        // All the settings are host related, so they shouldn't be reset when the device
+        // is reset.
     }
 
     public bool IsMuted { get; set; } = false;
