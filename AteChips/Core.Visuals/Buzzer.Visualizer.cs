@@ -202,17 +202,25 @@ public partial class Buzzer
         float phase = 0.0f;
         float phaseIncrement = TAU * Pitch / SampleRate;
 
+        float sumSquares = 0f;
+
         for (int i = 0; i < _sampleCount; i++)
         {
             float t = i / (float)SampleRate;
+            float sample = GetWaveformSample((phase / TAU) % 1f, t); // Phase normalized to [0,1)
 
-            _waveform[i] = GetWaveformSample(phase / TAU % 1f, t) * Volume;
+            _waveform[i] = sample * Volume;
+
+            sumSquares += sample * sample;
+
             phase += phaseIncrement;
             if (phase >= TAU)
-            {
                 phase -= TAU;
-            }
         }
+
+        // Calculate and store normalization factor
+        float rms = MathF.Sqrt(sumSquares / _sampleCount);
+        _normalizationFactor = (rms == 0f) ? 1f : 1f / rms;
 
         _lastVisualizedSettings = CurrentSettings;
     }
