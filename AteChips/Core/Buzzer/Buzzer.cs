@@ -16,6 +16,7 @@ public partial class Buzzer : IBuzzer
     public int Channels => 2;
     private readonly CrystalTimer _timer;
     private float _currentAmplitude;
+    private float? _normalizationFactor;
 
     public Buzzer(CrystalTimer timer)
     {
@@ -48,6 +49,9 @@ public partial class Buzzer : IBuzzer
 
     public int GetSamples(float[] buffer, int offset, int count)
     {
+
+        if (_normalizationFactor is null) { GenerateWaveformPreview(); }
+
         bool makingSound = (_timer.SoundTimer > 0 && !IsMuted) || TestTone;
 
         float frequency = Pitch;
@@ -61,7 +65,7 @@ public partial class Buzzer : IBuzzer
             // Smoothly approach target amplitude
             _currentAmplitude += (targetAmplitude - _currentAmplitude) * fadeSpeed;
 
-            float sample = GetWaveformSample(_phase, _totalSamplesGenerated) * _currentAmplitude * GetNormalizationFactor(Waveform);
+            float sample = GetWaveformSample(_phase, _totalSamplesGenerated) * _currentAmplitude * _normalizationFactor!.Value;
 
             buffer[offset + i] = sample;       // Left
             buffer[offset + i + 1] = sample;   // Right
@@ -76,10 +80,6 @@ public partial class Buzzer : IBuzzer
         _totalSamplesGenerated += count / Channels;
         return count;
     }
-
-
-
-    public static float GetNormalizationFactor(WaveformType type) => 0.1f;
 
     protected float GetWaveformSample(float phase, float time)
     {
