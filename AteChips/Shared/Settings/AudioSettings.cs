@@ -6,8 +6,9 @@ namespace AteChips.Shared.Settings;
 
 public record AudioSettings
 {
-    public BuzzerSettings BuzzerSettings { get; set; } = new();
-    public StereoSpeakersSetting StereoSpeakersSettings { get; set; } = new();
+    public BuzzerSettings Buzzer { get; set; } = new();
+    public StereoSpeakersSetting StereoSpeakers { get; set; } = new();
+    public ImGuiSettings VisualizerLayout { get; set; } = new();
 }
 
 [JsonSourceGenerationOptions(WriteIndented = true)]

@@ -2,5 +2,5 @@
 
 public class Chip8Settings
 {
-    public AudioSettings AudioSettings { get; set; } = new();
+    public AudioSettings Audio { get; set; } = new();
 }

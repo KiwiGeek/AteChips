@@ -4,9 +4,11 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using AteChips.Host.Audio;
 using System.Linq;
+using System.Numerics;
 using AteChips.Host.UI.ImGui;
 using AteChips.Core.Shared.Interfaces;
 using Shared.Settings;
+using AteChips.Shared.Settings;
 
 // ReSharper disable once CheckNamespace
 namespace AteChips.Core;
@@ -33,11 +35,8 @@ public partial class Buzzer
 
     public void Visualize()
     {
-        ImGui.SetNextWindowSizeConstraints(
-            new System.Numerics.Vector2(400, 300), // Min size
-            new System.Numerics.Vector2(float.MaxValue, float.MaxValue) // Max size (infinite)
-        );
-        ImGui.Begin("Buzzer");
+        ImGuiSettings settings = SettingsManager.Current.Audio.VisualizerLayout;
+        ImGuiWindowSettingsManager.Begin("Buzzer", settings);
 
         // Get a list of all available sound devices from the Speakers
         StereoSpeakers speakers = IVisualizable.HostBridge.Get<StereoSpeakers>()!;
@@ -48,7 +47,7 @@ public partial class Buzzer
             _deviceList = [.. StereoSpeakers.GetHardwareDevices()];
             
             // get the name of the current device.
-            string deviceName = SettingsManager.Current.AudioSettings.StereoSpeakersSettings.AudioDeviceName;
+            string deviceName = SettingsManager.Current.Audio.StereoSpeakers.AudioDeviceName;
 
             // find the index of the current device in the list
             _selectedDeviceIndex = _deviceList
@@ -189,6 +188,7 @@ public partial class Buzzer
             );
         }
 
+        ImGuiWindowSettingsManager.Update(settings);
         ImGui.End();
     }
 

@@ -38,7 +38,7 @@ public class EmulatorRuntime
         _timing.Register(display);
 
         // create the sound device and connect it to the audio output. 
-        StereoSpeakers outputSpeakers = new(_settings.AudioSettings.StereoSpeakersSettings);
+        StereoSpeakers outputSpeakers = new(_settings.Audio.StereoSpeakers);
         IAudioOutputSignal monoSignal = emulatedMachine.Get<ISoundDevice>().GetPrimaryOutput();
         outputSpeakers.Connect(monoSignal, [0, 1]); // stereo
         SettingsManager.Register(outputSpeakers);

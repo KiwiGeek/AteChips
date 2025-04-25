@@ -117,7 +117,7 @@ public class Chip8Machine : IEmulatedMachine
                 nameof(Cpu) => _cpu,
                 nameof(FrameBufferVideoCard) => _gpu,
                 nameof(CrystalTimer) => _timer,
-                nameof(BuzzerSettings) => SettingsManager.Current.AudioSettings.BuzzerSettings,
+                nameof(BuzzerSettings) => SettingsManager.Current.Audio.Buzzer,
                 _ => throw new InvalidOperationException("can't resolve dependency")
             };
 
