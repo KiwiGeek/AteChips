@@ -1,5 +1,7 @@
 ﻿using AteChips.Core;
 using AteChips.Host.Runtime;
+using AteChips.Shared.Settings;
+using Shared.Settings;
 
 namespace AteChips;
 
@@ -11,6 +13,7 @@ public static class Program
     public static void Main()
     {
         NativeResolver.Setup();
+        SettingsManager.Load();
         Chip8Machine = new();
         Chip8EmulatorRuntime = new(Chip8Machine);
         Chip8EmulatorRuntime.Run();

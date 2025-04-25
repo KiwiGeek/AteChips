@@ -1,14 +1,20 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Text.Json;
+using AteChips.Core.Shared.Interfaces;
 using AteChips.Shared.Runtime;
 using AteChips.Shared.Sound;
 using PortAudioSharp;
 
 namespace AteChips.Host.Audio;
-internal class StereoSpeakers : IHostService, IAudioOutputDevice
+internal class StereoSpeakers : IHostService, IAudioOutputDevice, ISettingsChangedNotifier
 {
+
+    public event Action? SettingsChanged;
+
     private IAudioOutputSignal? _connectedSignal;
     private int[]? _channelMap; // maps output buffer channels to source signal
     private const int SAMPLE_RATE = 44100;
@@ -16,12 +22,30 @@ internal class StereoSpeakers : IHostService, IAudioOutputDevice
     private readonly uint _samplesPerRequest;
     private Stream? _stream; // store as a field
 
-    internal StereoSpeakers()
+    private readonly StereoSpeakersSetting _speakerSettings;
+
+    internal StereoSpeakers(StereoSpeakersSetting settings)
     {
+        _speakerSettings = settings ?? throw new ArgumentNullException(nameof(settings));
+
         int framesPerRequest = (int)(SAMPLE_RATE / 60.0); // 735 frames
         _samplesPerRequest = (uint)(framesPerRequest * CHANNELS); // 735 frames * 2 channels
         
         PortAudio.Initialize();
+
+        // if we have a device name in settings, we try to find it. If we don't, or we can't 
+        // find it, then we fall back to the default device.
+        if (!string.IsNullOrEmpty(_speakerSettings.AudioDeviceName))
+        {
+            // try to find the device by name
+            int deviceId = GetHardwareDevices()
+                .FirstOrDefault(f => f.Item2 == _speakerSettings.AudioDeviceName).Item1;
+            if (deviceId != 0)
+            {
+                ConnectToSoundDevice(deviceId);
+                return;
+            }
+        }
 
         // get the default audio device. For Mac and Linux, this is the first device. For windows, we're
         // going with the lowest numbered device returned by GetHardwareDevices, because that's _probably_
@@ -63,6 +87,8 @@ internal class StereoSpeakers : IHostService, IAudioOutputDevice
             suggestedLatency = deviceInfo.defaultLowOutputLatency,
             hostApiSpecificStreamInfo = IntPtr.Zero
         };
+        _speakerSettings.AudioDeviceName = deviceInfo.name;
+        SettingsChanged?.Invoke();
 
         _stream =
             new Stream(

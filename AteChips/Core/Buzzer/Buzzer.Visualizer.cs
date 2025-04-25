@@ -6,6 +6,7 @@ using AteChips.Host.Audio;
 using System.Linq;
 using AteChips.Host.UI.ImGui;
 using AteChips.Core.Shared.Interfaces;
+using Shared.Settings;
 
 // ReSharper disable once CheckNamespace
 namespace AteChips.Core;
@@ -21,16 +22,7 @@ public partial class Buzzer
     private int _sampleCount;
     private float[] _waveform = null!;
 
-    private WaveformSettings _lastVisualizedSettings;
-
-    private record struct WaveformSettings(
-        float Pitch,
-        float Volume,
-        WaveformType Waveform,
-        float DutyCycle,
-        float Sharpness,
-        int Steps
-    );
+    private BuzzerSettings? _lastVisualizedSettings;
 
     private void VisualizerInit()
     {
@@ -54,7 +46,14 @@ public partial class Buzzer
         if (_deviceList is null)
         {
             _deviceList = [.. StereoSpeakers.GetHardwareDevices()];
-            _selectedDeviceIndex = 0; // todo: get this from the speaker.
+            
+            // get the name of the current device.
+            string deviceName = SettingsManager.Current.AudioSettings.StereoSpeakersSettings.AudioDeviceName;
+
+            // find the index of the current device in the list
+            _selectedDeviceIndex = _deviceList
+                .Select((device, index) => (device, index))
+                .FirstOrDefault(x => x.device.Name == deviceName).index;
         }
 
         Debug.Assert(_selectedDeviceIndex != null);
@@ -95,14 +94,14 @@ public partial class Buzzer
             _deviceListInitialized = false;
         }
 
-        ImGuiWidgets.Checkbox("Mute", () => IsMuted, v => IsMuted = v);
-        ImGuiWidgets.SliderFloat("Pitch (Hz)", () => Pitch, v => Pitch = v, 50f, 2000f);
+        ImGuiWidgets.Checkbox("Mute", () => _buzzerSettings.IsMuted, v => _buzzerSettings.IsMuted = v);
+        ImGuiWidgets.SliderFloat("Pitch (Hz)", () => _buzzerSettings.Pitch, v => _buzzerSettings.Pitch = v, 50f, 2000f);
         ImGuiWidgets.SliderFloat("Volume", 
-            () => MathF.Pow(Volume, 1f / LOUDNESS_CURVE), 
-            value => Volume = MathF.Pow(value, LOUDNESS_CURVE));
+            () => MathF.Pow(_buzzerSettings.Volume, 1f / LOUDNESS_CURVE), 
+            value => _buzzerSettings.Volume = MathF.Pow(value, LOUDNESS_CURVE));
 
         string[] waveforms = Enum.GetNames<WaveformType>();
-        string selectedName = Waveform.ToString();
+        string selectedName = _buzzerSettings.Waveform.ToString();
 
         if (ImGui.BeginCombo("Waveform", selectedName))
         {
@@ -111,7 +110,7 @@ public partial class Buzzer
                 bool isSelected = wave == selectedName;
                 if (ImGui.Selectable(wave, isSelected))
                 {
-                    Waveform = Enum.Parse<WaveformType>(wave);
+                    _buzzerSettings.Waveform = Enum.Parse<WaveformType>(wave);
                 }
 
                 if (isSelected)
@@ -123,23 +122,23 @@ public partial class Buzzer
             ImGui.EndCombo();
         }
 
-        if (Waveform is WaveformType.Pulse or WaveformType.StaticBuzz or WaveformType.RetroLaser
+        if (_buzzerSettings.Waveform is WaveformType.Pulse or WaveformType.StaticBuzz or WaveformType.RetroLaser
             or WaveformType.MorphPulse)
         {
             ImGuiWidgets.SliderFloat("Phase Duty Cycle (%)", 
-                () => PulseDutyCycle / TAU * 100f,
-                (v) => PulseDutyCycle = (float)(v / 100.0) * TAU, 
+                () => _buzzerSettings.PulseDutyCycle / TAU * 100f,
+                (v) => _buzzerSettings.PulseDutyCycle = (float)(v / 100.0) * TAU, 
                 0f, 100f);
         }
 
-        if (Waveform == WaveformType.RoundedSquare)
+        if (_buzzerSettings.Waveform == WaveformType.RoundedSquare)
         {
-            ImGuiWidgets.SliderFloat("Sharpness", () => RoundedSharpness, (v) => RoundedSharpness = v, 1f, 40f);
+            ImGuiWidgets.SliderFloat("Sharpness", () => _buzzerSettings.RoundedSharpness, (v) => _buzzerSettings.RoundedSharpness = v, 1f, 40f);
         }
 
-        if (Waveform == WaveformType.Staircase)
+        if (_buzzerSettings.Waveform == WaveformType.Staircase)
         {
-            ImGuiWidgets.SliderInt("Steps", () => StairSteps, (v) => StairSteps = v, 2, 32);
+            ImGuiWidgets.SliderInt("Steps", () => _buzzerSettings.StairSteps, (v) => _buzzerSettings.StairSteps = v, 2, 32);
         }
 
 
@@ -193,14 +192,13 @@ public partial class Buzzer
         ImGui.End();
     }
 
-    private bool NeedsToGenerateWaveform => _lastVisualizedSettings != CurrentSettings;
-    private WaveformSettings CurrentSettings =>
-        new(Pitch, Volume, Waveform, PulseDutyCycle, RoundedSharpness, StairSteps);
-
+    private bool NeedsToGenerateWaveform => _lastVisualizedSettings is not null 
+                                            && _lastVisualizedSettings != _buzzerSettings;
+    
     private void GenerateWaveformPreview()
     {
         float phase = 0.0f;
-        float phaseIncrement = TAU * Pitch / SampleRate;
+        float phaseIncrement = TAU * _buzzerSettings.Pitch / SampleRate;
 
         float sumSquares = 0f;
 
@@ -209,7 +207,7 @@ public partial class Buzzer
             float t = i / (float)SampleRate;
             float sample = GetWaveformSample((phase / TAU) % 1f, t); // Phase normalized to [0,1)
 
-            _waveform[i] = sample * Volume;
+            _waveform[i] = sample * _buzzerSettings.Volume;
 
             sumSquares += sample * sample;
 
@@ -222,6 +220,7 @@ public partial class Buzzer
         float rms = MathF.Sqrt(sumSquares / _sampleCount);
         _normalizationFactor = (rms == 0f) ? 1f : 1f / rms;
 
-        _lastVisualizedSettings = CurrentSettings;
+        _lastVisualizedSettings = _buzzerSettings with {};
+        SettingsChanged?.Invoke();
     }
 }
