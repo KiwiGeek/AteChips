@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using AteChips.Core.Shared.Interfaces;
+using AteChips.Shared.Settings;
+using Shared.Settings;
 
 namespace AteChips.Core;
 
@@ -33,7 +35,7 @@ public class Chip8Machine : IEmulatedMachine
         _timer = Register<CrystalTimer>();              // relies on nothing
         _buzzer = Register<Buzzer>();                   // relies on ICrystalTimer
         _cpu = Register<Cpu>();                         // relies on IFrameBuffer, IKeyboard and IRam
-        _gpu = Register<FrameBufferVideoCard>();         // relies on IFrameBuffer   
+        _gpu = Register<FrameBufferVideoCard>();        // relies on IFrameBuffer   
 
         // build the device lists.
         Resettables = _devices.OfType<IResettable>().ToList();
@@ -86,6 +88,12 @@ public class Chip8Machine : IEmulatedMachine
             {
                 T instance = (T)matchingConstructor.Invoke(constructorArgs);
                 _devices.Add(instance);
+
+                if (instance is ISettingsChangedNotifier notifier)
+                {
+                    SettingsManager.Register(notifier);
+                }
+
                 return instance;
             }
         }
@@ -109,6 +117,7 @@ public class Chip8Machine : IEmulatedMachine
                 nameof(Cpu) => _cpu,
                 nameof(FrameBufferVideoCard) => _gpu,
                 nameof(CrystalTimer) => _timer,
+                nameof(BuzzerSettings) => SettingsManager.Current.AudioSettings.BuzzerSettings,
                 _ => throw new InvalidOperationException("can't resolve dependency")
             };
 
@@ -116,6 +125,12 @@ public class Chip8Machine : IEmulatedMachine
 
         T fallbackInstance = (T)Activator.CreateInstance(type, constructorParameters)!;
         _devices.Add(fallbackInstance);
+
+        if (fallbackInstance is ISettingsChangedNotifier notifier2)
+        {
+            SettingsManager.Register(notifier2);
+        }
+
         return fallbackInstance;
     }
 

@@ -9,15 +9,19 @@ using AteChips.Host.Audio;
 using AteChips.Host.Input;
 using AteChips.Shared.Sound;
 using AteChips.Shared.Runtime;
+using AteChips.Shared.Settings;
+using Shared.Settings;
 
 namespace AteChips.Host.Runtime;
 public class EmulatorRuntime
 {
     private readonly TimingController _timing;
     public IHostBridge HostBridge;
+    private Chip8Settings _settings;
 
     public EmulatorRuntime(IEmulatedMachine emulatedMachine)
     {
+        _settings = SettingsManager.Current;
 
         // Create the timing controller, and register all our hardware with it.
         _timing = new TimingController();
@@ -34,9 +38,10 @@ public class EmulatorRuntime
         _timing.Register(display);
 
         // create the sound device and connect it to the audio output. 
-        StereoSpeakers outputSpeakers = new();
+        StereoSpeakers outputSpeakers = new(_settings.AudioSettings.StereoSpeakersSettings);
         IAudioOutputSignal monoSignal = emulatedMachine.Get<ISoundDevice>().GetPrimaryOutput();
         outputSpeakers.Connect(monoSignal, [0, 1]); // stereo
+        SettingsManager.Register(outputSpeakers);
 
         // Create the keyboard, and register it with the timing controller; it should happen
         // before the keypad, so that the keypad can use it.
