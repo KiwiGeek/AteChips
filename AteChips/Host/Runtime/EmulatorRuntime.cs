@@ -32,10 +32,11 @@ public class EmulatorRuntime
 
         // Create the display and connect it to the first video output. Manually register it
         // with the timing controller. For now, we just support one display.
-        Display display = new(emulatedMachine);
+        Display display = new(emulatedMachine, _settings.Display.VideoSettings);
         VideoOutputSignal videoSignal = emulatedMachine.Get<IVideoCard>().GetPrimaryOutput();
         display.Connect(videoSignal);
         _timing.Register(display);
+        SettingsManager.Register(display);
 
         // create the sound device and connect it to the audio output. 
         StereoSpeakers outputSpeakers = new(_settings.Audio.StereoSpeakers);

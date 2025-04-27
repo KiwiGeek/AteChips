@@ -2,11 +2,11 @@
 using OpenTK.Windowing.Common;
 using OpenTK.Windowing.Desktop;
 using System;
+using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Reflection;
 using GameWindow = OpenTK.Windowing.Desktop.GameWindow;
-using IDrawable = AteChips.Host.Video.IDrawable;
 using OpenTK.Windowing.GraphicsLibraryFramework;
 using ClearBufferMask = OpenTK.Graphics.OpenGL4.ClearBufferMask;
 using GL = OpenTK.Graphics.OpenGL4.GL;
@@ -15,6 +15,7 @@ using OpenTK.Graphics.OpenGL4;
 using AteChips.Host.UI.ImGui;
 using AteChips.Core.Shared.Interfaces;
 using AteChips.Shared.Video;
+using Shared.Settings;
 
 namespace AteChips.Host.Video;
 
@@ -22,9 +23,8 @@ namespace AteChips.Host.Video;
 /// Main video output manager. Responsible for rendering the emulated display
 /// using OpenGL, integrating ImGui, and managing the window lifecycle.
 /// </summary>
-partial class Display : IVisualizable, IDrawable
+partial class Display : IVisualizable, IDrawable, ISettingsChangedNotifier
 {
-
     /// <summary>
     /// The main ImGui front-end UI renderer.
     /// </summary>
@@ -40,11 +40,7 @@ partial class Display : IVisualizable, IDrawable
     /// </summary>
     private VideoOutputSignal? _connectedSignal;
 
-    // todo: Move to settings
-    /// <summary>
-    /// Tracks fullscreen toggle state.
-    /// </summary>
-    private bool _fullscreen;
+    private VideoSettings _videoSettings;
 
     // todo: move window size to settings
     /// <summary>
@@ -104,8 +100,10 @@ partial class Display : IVisualizable, IDrawable
     /// Constructs the display system and sets up the rendering pipeline.
     /// </summary>
     /// <param name="machine">The emulated machine providing display specs.</param>
-    public Display(IEmulatedMachine machine)
+    public Display(IEmulatedMachine machine, VideoSettings videoSettings)
     {
+        _videoSettings = videoSettings;
+
         _pixelAspectRatio = machine.DisplaySpec.PixelAspectRatio;
 
         NativeWindowSettings nativeWindowSettings = new()
@@ -180,7 +178,7 @@ partial class Display : IVisualizable, IDrawable
         float chipAspect = logicalWidth / (logicalHeight * _pixelAspectRatio);
         float windowAspect = windowWidth / (float)windowHeight;
 
-        if (!Settings.MaintainAspectRatio)
+        if (!SettingsManager.Current.Display.VideoSettings.MaintainAspectRatio)
         {
             return new Viewport(0, 0, windowWidth, windowHeight);
         }
@@ -249,13 +247,12 @@ partial class Display : IVisualizable, IDrawable
     public void ToggleFullScreen()
     {
 
-        if (_fullscreen)
+        if (_videoSettings.FullScreen)
         {
             Window.WindowBorder = WindowBorder.Resizable;
             Window.WindowState = WindowState.Normal;
             Window.ClientSize = _savedClientSize;
             Window.Location = _savedPosition;
-            _fullscreen = false;
         }
         else
         {
@@ -268,8 +265,9 @@ partial class Display : IVisualizable, IDrawable
             Window.WindowState = WindowState.Normal;
             Window.Location = new Vector2i(0, 0);
             Window.Size = new Vector2i(monitor.HorizontalResolution, monitor.VerticalResolution);
-            _fullscreen = true;
         }
+        _videoSettings.FullScreen ^= true;
+        SettingsChanged?.Invoke();
     }
 
     private double _lastGameTime = 0;
@@ -434,4 +432,5 @@ partial class Display : IVisualizable, IDrawable
 
     public double FrequencyHz => 60;
     public byte UpdatePriority => 0;
+    public event Action? SettingsChanged;
 }

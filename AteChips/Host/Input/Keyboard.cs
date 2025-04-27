@@ -4,6 +4,7 @@ using AteChips.Core.Shared.Timing;
 using AteChips.Host.Video;
 using AteChips.Shared.Settings;
 using OpenTK.Windowing.GraphicsLibraryFramework;
+using Shared.Settings;
 
 namespace AteChips.Host.Input;
 

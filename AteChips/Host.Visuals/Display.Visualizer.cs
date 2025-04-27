@@ -1,6 +1,7 @@
 ﻿using AteChips.Host.UI.ImGui;
 using AteChips.Shared.Settings;
 using ImGuiNET;
+using Shared.Settings;
 
 namespace AteChips.Host.Video;
 
@@ -11,10 +12,23 @@ public partial class Display
 
     public void Visualize()
     {
-        ImGui.Begin("Visual Settings##Main", ImGuiWindowFlags.NoDocking);
+        ImGuiSettings settings = SettingsManager.Current.Display.VisualizerLayout;
+        ImGuiWindowSettingsManager.Begin("Visual Settings##Main", settings);
 
-        ImGuiWidgets.Checkbox("Maintain Aspect Ratio", () => Settings.MaintainAspectRatio,
-            value => Settings.MaintainAspectRatio = value);
+        ImGuiWidgets.Checkbox("Maintain Aspect Ratio", 
+            () => SettingsManager.Current.Display.VideoSettings.MaintainAspectRatio,
+            value =>
+            {
+                SettingsManager.Current.Display.VideoSettings.MaintainAspectRatio = value;
+                SettingsChanged?.Invoke();
+            });
+
+        ImGuiWidgets.Checkbox("Fullscreen", 
+            () => SettingsManager.Current.Display.VideoSettings.FullScreen,
+            value =>
+            {
+                ToggleFullScreen();
+            });
 
         //PhosphorColor();
 
@@ -50,7 +64,7 @@ public partial class Display
 
         //PhosphorDecay();
 
-
+        ImGuiWindowSettingsManager.Update(settings);
         ImGui.End();
     }
 
