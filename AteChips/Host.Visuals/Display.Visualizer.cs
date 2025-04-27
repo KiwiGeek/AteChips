@@ -25,14 +25,12 @@ public partial class Display
 
         ImGuiWidgets.Checkbox("Fullscreen", 
             () => SettingsManager.Current.Display.VideoSettings.FullScreen,
-            value =>
-            {
-                ToggleFullScreen();
-            });
+            _ => ToggleFullScreen()
+            );
 
-        //PhosphorColor();
+        PhosphorColor();
 
-        //ImGui.SeparatorText("Visual Effects");
+        ImGui.SeparatorText("Visual Effects");
 
         //ImGui.Checkbox("CRT Scanlines", ref _postProcessor.EnableScanlines);
         //if (_postProcessor.EnableScanlines &&
@@ -79,35 +77,56 @@ public partial class Display
     //}
 
 
-    //private void PhosphorColor()
-    //{
-    //    ImGui.SeparatorText("Phosphor Color");
+    private void PhosphorColor()
+    {
+        ImGui.SeparatorText("Phosphor Color");
 
-    //    // Preset dropdown
-    //    string[] colorOptions = ["White", "Amber", "Green"];
+        ImGuiWidgets.Checkbox("Use Custom Color",
+            () => _videoSettings.CustomPhosphorColor is not null,
+            value =>
+            {
+                _videoSettings.CustomPhosphorColor = value
+                    ? new VideoSettings.PhosphorColor()
+                    : null;
+                _videoSettings.PhosphorColorType = value
+                    ? null
+                    : VideoSettings.PresetPhosphorColor.Amber;
+                SettingsChanged?.Invoke();
+            });
 
-    //    ImGui.Checkbox("Use Custom Color", ref _useCustomColor);
-
-    //    if (_useCustomColor)
-    //    {
-    //        ImGui.SliderFloat("Red", ref _customColor.X, 0.0f, 1.0f);
-    //        ImGui.SliderFloat("Green", ref _customColor.Y, 0.0f, 1.0f);
-    //        ImGui.SliderFloat("Blue", ref _customColor.Z, 0.0f, 1.0f);
-    //        _postProcessor.PhosphorColor = _customColor;
-    //    }
-    //    else
-    //    {
-    //        if (ImGui.Combo("Preset", ref _selectedPhosphorIndex, colorOptions, colorOptions.Length))
-    //        {
-    //            _customColor = _selectedPhosphorIndex switch
-    //            {
-    //                0 => new Vector3(1.0f, 1.0f, 1.0f), // White
-    //                1 => new Vector3(1.0f, 0.64f, 0.1f), // Amber
-    //                2 => new Vector3(0.1f, 1.0f, 0.1f), // Green
-    //                _ => new Vector3(1.0f, 1.0f, 1.0f)
-    //            };
-    //            _postProcessor.PhosphorColor = _customColor;
-    //        }
-    //    }
-    //}
+        if (_videoSettings.CustomPhosphorColor is not null)
+        {
+            ImGuiWidgets.SliderFloat("Red",
+                () => _videoSettings.CustomPhosphorColor.Red,
+                value =>
+                {
+                    _videoSettings.CustomPhosphorColor.Red = value;
+                    SettingsChanged?.Invoke();
+                });
+            ImGuiWidgets.SliderFloat("Green", 
+                () => _videoSettings.CustomPhosphorColor.Green,
+                value =>
+                {
+                    _videoSettings.CustomPhosphorColor.Green = value;
+                    SettingsChanged?.Invoke();
+                });
+            ImGuiWidgets.SliderFloat("Blue", 
+                () => _videoSettings.CustomPhosphorColor.Blue,
+                value =>
+                {
+                    _videoSettings.CustomPhosphorColor.Blue = value;
+                    SettingsChanged?.Invoke(); 
+                });
+        }
+        else
+        {
+            ImGuiWidgets.ComboEnum("Preset",
+                () => (VideoSettings.PresetPhosphorColor)_videoSettings.PhosphorColorType!,
+                value =>
+                {
+                    _videoSettings.PhosphorColorType = value;
+                    SettingsChanged?.Invoke();
+                });
+        }
+    }
 }

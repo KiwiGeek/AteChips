@@ -1,16 +1,15 @@
 ﻿#version 330 core
 
-// Input texture coordinate from vertex shader
-in vec2 vTexCoord;
-
-// Output color of the pixel
 out vec4 FragColor;
 
-// The texture containing the emulator's framebuffer (red-channel only)
+in vec2 vTexCoord;
+
 uniform sampler2D uTexture;
+uniform vec3 u_PhosphorColor;
 
 void main()
 {
-    // Sample the full RGBA color from the texture
-    FragColor = texture(uTexture, vTexCoord);
+    vec4 texColor = texture(uTexture, vTexCoord);
+    texColor.rgb *= u_PhosphorColor; // <- tint it!
+    FragColor = texColor;
 }

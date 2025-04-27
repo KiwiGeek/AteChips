@@ -2,7 +2,6 @@
 using OpenTK.Windowing.Common;
 using OpenTK.Windowing.Desktop;
 using System;
-using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -41,6 +40,8 @@ partial class Display : IVisualizable, IDrawable, ISettingsChangedNotifier
     private VideoOutputSignal? _connectedSignal;
 
     private VideoSettings _videoSettings;
+
+    private int _phosphorColorUniform;
 
     // todo: move window size to settings
     /// <summary>
@@ -237,6 +238,10 @@ partial class Display : IVisualizable, IDrawable, ISettingsChangedNotifier
         GL.BindTexture(TextureTarget.Texture2D, (int)surface.TextureId);
         GL.Viewport(x, y, width, height);
         GL.UseProgram(_shader);
+
+        VideoSettings.PhosphorColor phosphor = _videoSettings.RenderPhosphorColor;
+        GL.Uniform3(_phosphorColorUniform, phosphor.Red, phosphor.Green, phosphor.Blue);
+
         GL.BindVertexArray(_vao);
         GL.DrawArrays(PrimitiveType.Triangles, 0, 6);
     }
@@ -386,7 +391,7 @@ partial class Display : IVisualizable, IDrawable, ISettingsChangedNotifier
     /// and a fragment shader (samples the framebuffer texture).
     /// </summary>
     /// <returns>OpenGL shader program ID.</returns>
-    private static int CreateDefaultShader()
+    private int CreateDefaultShader()
     {
         // Create and compile the vertex shader
         int vertex = GL.CreateShader(ShaderType.VertexShader);
@@ -403,6 +408,11 @@ partial class Display : IVisualizable, IDrawable, ISettingsChangedNotifier
         GL.AttachShader(program, vertex);
         GL.AttachShader(program, fragment);
         GL.LinkProgram(program);
+        _phosphorColorUniform = GL.GetUniformLocation(program, "u_PhosphorColor");
+        if (_phosphorColorUniform == -1)
+        {
+            Console.WriteLine("Warning: u_PhosphorColor uniform not found in shader.");
+        }
 
         // Shaders are now part of the program, so we can delete the raw handles
         GL.DeleteShader(vertex);

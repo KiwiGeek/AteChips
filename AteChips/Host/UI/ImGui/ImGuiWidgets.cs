@@ -22,6 +22,37 @@ public static class ImGuiWidgets
         }
     }
 
+    public static bool Combo(string label, Func<int> getter, Action<int> setter, string[] items)
+    {
+        int currentIndex = getter();
+        bool changed = false;
+
+        if (ImGuiNET.ImGui.Combo(label, ref currentIndex, items, items.Length))
+        {
+            setter(currentIndex);
+            changed = true;
+        }
+
+        return changed;
+    }
+
+    public static bool ComboEnum<TEnum>(string label, Func<TEnum> getter, Action<TEnum> setter) where TEnum : Enum
+    {
+        TEnum currentValue = getter();
+        string[] names = Enum.GetNames(typeof(TEnum));
+        int currentIndex = Array.IndexOf(names, currentValue.ToString());
+        bool changed = false;
+
+        if (ImGuiNET.ImGui.Combo(label, ref currentIndex, names, names.Length))
+        {
+            TEnum newValue = (TEnum)Enum.Parse(typeof(TEnum), names[currentIndex]);
+            setter(newValue);
+            changed = true;
+        }
+
+        return changed;
+    }
+
     public static void SliderInt(string label, Func<int> getter, Action<int> setter, int min = 0, int max = 100)
     {
         int value = getter();
