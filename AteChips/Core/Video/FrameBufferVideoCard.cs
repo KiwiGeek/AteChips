@@ -16,38 +16,25 @@ public class FrameBufferVideoCard : IVideoCard, IUpdatable
     public FrameBufferVideoCard(FrameBuffer frameBuffer)
     {
         _framebuffer = frameBuffer;
-        _pixelBuffer = new byte[frameBuffer.Width * frameBuffer.Height * 4]; // RGBA format
+        _pixelBuffer = new byte[frameBuffer.Width * frameBuffer.Height]; // RGBA format
         _renderSurface = new GpuTextureSurface(frameBuffer.Width, frameBuffer.Height); // You might already have something like this
         _output = new VideoOutputSignal("Main", _renderSurface);
     }
 
-    private static void ConvertFramebufferToRgba(bool[] source, byte[] dest, byte r, byte g, byte b)
+    private static void ConvertFramebufferToMono(bool[] source, byte[] dest)
     {
         for (int i = 0; i < source.Length; i++)
         {
-            int offset = i * 4;
-            if (source[i])
-            {
-                dest[offset + 0] = r;
-                dest[offset + 1] = g;
-                dest[offset + 2] = b;
-                dest[offset + 3] = 255;
-            }
-            else
-            {
-                dest[offset + 0] = 0;
-                dest[offset + 1] = 0;
-                dest[offset + 2] = 0;
-                dest[offset + 3] = 255; // You can also make this 0 for transparency
-            }
+            dest[i] = source[i] ? (byte)255 : (byte)0;
         }
     }
+
     public IEnumerable<VideoOutputSignal> GetOutputs() => [_output];
     public VideoOutputSignal GetPrimaryOutput() => _output;
 
     public void Update()
     {
-        ConvertFramebufferToRgba(_framebuffer.Pixels, _pixelBuffer, 255, 255, 255); 
+        ConvertFramebufferToMono(_framebuffer.Pixels, _pixelBuffer);
         _renderSurface.Update(_pixelBuffer);
     }
 

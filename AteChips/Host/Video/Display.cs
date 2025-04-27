@@ -70,6 +70,10 @@ partial class Display : IVisualizable, IDrawable, ISettingsChangedNotifier
     /// </summary>
     private int _shader;
 
+    private int _textureId;
+    private int _currentTextureWidth = 0;
+    private int _currentTextureHeight = 0;
+
     /// <summary>
     /// The OpenTK window and OpenGL context host.
     /// </summary>
@@ -134,7 +138,9 @@ partial class Display : IVisualizable, IDrawable, ISettingsChangedNotifier
     /// </summary>
     private void InitializeGl()
     {
-        GL.TexImage2D(TextureTarget.Texture2D, 0, PixelInternalFormat.R8, 64, 32, 0, PixelFormat.Red, PixelType.UnsignedByte, nint.Zero);
+        // Create empty texture, actual size will be allocated when connecting a signal
+        _textureId = GL.GenTexture();
+        GL.BindTexture(TextureTarget.Texture2D, _textureId);
 
         GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)TextureMinFilter.Nearest);
         GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)TextureMagFilter.Nearest);
@@ -144,12 +150,34 @@ partial class Display : IVisualizable, IDrawable, ISettingsChangedNotifier
     }
 
     /// <summary>
+    /// Ensures the OpenGL texture matches the size of the connected video surface.
+    /// </summary>
+    private void ResizeTextureIfNeeded()
+    {
+        if (_connectedSignal?.Surface == null)
+            return;
+
+        int width = _connectedSignal.Surface.Width;
+        int height = _connectedSignal.Surface.Height;
+
+        if (width != _currentTextureWidth || height != _currentTextureHeight)
+        {
+            GL.BindTexture(TextureTarget.Texture2D, _textureId);
+            GL.TexImage2D(TextureTarget.Texture2D, 0, PixelInternalFormat.R8, width, height, 0, PixelFormat.Red, PixelType.UnsignedByte, nint.Zero);
+
+            _currentTextureWidth = width;
+            _currentTextureHeight = height;
+        }
+    }
+
+    /// <summary>
     /// Connects a video signal to this display for rendering.
     /// </summary>
     /// <param name="signal">The signal to connect to the display.</param>
     public void Connect(VideoOutputSignal signal)
     {
         _connectedSignal = signal;
+        ResizeTextureIfNeeded();
     }
 
     /// <summary>
@@ -235,16 +263,35 @@ partial class Display : IVisualizable, IDrawable, ISettingsChangedNotifier
 
         IRenderSurface surface = _connectedSignal.Surface;
 
-        GL.BindTexture(TextureTarget.Texture2D, (int)surface.TextureId);
+        ResizeTextureIfNeeded(); // Ensure size matches
+
+        GL.BindTexture(TextureTarget.Texture2D, _textureId);
+
+        // Upload latest pixel data
+        GL.TexSubImage2D(
+            TextureTarget.Texture2D,
+            0,
+            0, 0,
+            surface.Width,
+            surface.Height,
+            PixelFormat.Red,
+            PixelType.UnsignedByte,
+            surface.PixelData // CPU pointer to pixel data
+        );
+
         GL.Viewport(x, y, width, height);
         GL.UseProgram(_shader);
 
-        VideoSettings.PhosphorColor phosphor = _videoSettings.RenderPhosphorColor;
-        GL.Uniform3(_phosphorColorUniform, phosphor.Red, phosphor.Green, phosphor.Blue);
+        if (_phosphorColorUniform >= 0)
+        {
+            VideoSettings.PhosphorColor phosphor = _videoSettings.RenderPhosphorColor;
+            GL.Uniform3(_phosphorColorUniform, phosphor.Red, phosphor.Green, phosphor.Blue);
+        }
 
         GL.BindVertexArray(_vao);
         GL.DrawArrays(PrimitiveType.Triangles, 0, 6);
     }
+
 
     /// <summary>
     /// Toggles fullscreen mode, saving and restoring window state as needed.

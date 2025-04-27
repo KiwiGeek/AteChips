@@ -7,40 +7,37 @@ public class GpuTextureSurface : IRenderSurface, IDisposable
     public int Width { get; }
     public int Height { get; }
 
-    public IntPtr TextureId => _glTextureId;
+    private byte[] _pixelBuffer;
 
     private int _glTextureId = -1;
-    private bool _isInitialized;
 
     public GpuTextureSurface(int width, int height)
     {
         Width = width;
         Height = height;
+        _pixelBuffer = new byte[width * height];
+    }
+
+    public IntPtr PixelData
+    {
+        get
+        {
+            unsafe
+            {
+                fixed (byte* ptr = _pixelBuffer)
+                {
+                    return (IntPtr)ptr;
+                }
+            }
+        }
     }
 
     public void Update(byte[] pixelData)
     {
-        if (!_isInitialized)
-        {
-            Initialize();
-            _isInitialized = true;
-        }
+        if (pixelData.Length != _pixelBuffer.Length)
+            throw new InvalidOperationException("Pixel data size mismatch");
 
-        GL.BindTexture(TextureTarget.Texture2D, _glTextureId);
-        GL.TexSubImage2D(TextureTarget.Texture2D, 0, 0, 0, Width, Height,
-            PixelFormat.Rgba, PixelType.UnsignedByte, pixelData);
-    }
-
-    private void Initialize()
-    {
-
-        _glTextureId = GL.GenTexture();
-        GL.BindTexture(TextureTarget.Texture2D, _glTextureId);
-        GL.TexImage2D(TextureTarget.Texture2D, 0, PixelInternalFormat.Rgba,
-            Width, Height, 0, PixelFormat.Rgba, PixelType.UnsignedByte, IntPtr.Zero);
-
-        GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)TextureMinFilter.Nearest);
-        GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)TextureMagFilter.Nearest);
+        Array.Copy(pixelData, _pixelBuffer, pixelData.Length);
     }
 
     public void Dispose()

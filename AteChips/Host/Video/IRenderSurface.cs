@@ -6,6 +6,5 @@ public interface IRenderSurface
 {
     int Width { get; }
     int Height { get; }
-
-    IntPtr TextureId { get; }      // For ImGui
+    IntPtr PixelData { get; }
 }
