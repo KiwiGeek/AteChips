@@ -15,6 +15,7 @@ using AteChips.Host.UI.ImGui;
 using AteChips.Core.Shared.Interfaces;
 using AteChips.Shared.Video;
 using Shared.Settings;
+using AteChips.Host.Video.Shaders;
 
 namespace AteChips.Host.Video;
 
@@ -41,7 +42,11 @@ partial class Display : IVisualizable, IDrawable, ISettingsChangedNotifier
 
     private VideoSettings _videoSettings;
 
+    private PhosphorDecayShaderEffect _phosphorDecayEffect;
+
     private int _phosphorColorUniform;
+
+    private ShaderPipeline _shaderPipeline;
 
     // todo: move window size to settings
     /// <summary>
@@ -54,6 +59,8 @@ partial class Display : IVisualizable, IDrawable, ISettingsChangedNotifier
     /// Saves the window position when toggling to fullscreen.
     /// </summary>
     private Vector2i _savedPosition;
+
+    private int _textureNewFrame;
 
     /// <summary>
     /// OpenGL Vertex Array Object ID.
@@ -69,10 +76,6 @@ partial class Display : IVisualizable, IDrawable, ISettingsChangedNotifier
     /// OpenGL shader program ID.
     /// </summary>
     private int _shader;
-
-    private int _textureId;
-    private int _currentTextureWidth = 0;
-    private int _currentTextureHeight = 0;
 
     /// <summary>
     /// The OpenTK window and OpenGL context host.
@@ -138,36 +141,29 @@ partial class Display : IVisualizable, IDrawable, ISettingsChangedNotifier
     /// </summary>
     private void InitializeGl()
     {
-        // Create empty texture, actual size will be allocated when connecting a signal
-        _textureId = GL.GenTexture();
-        GL.BindTexture(TextureTarget.Texture2D, _textureId);
-
-        GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)TextureMinFilter.Nearest);
-        GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)TextureMagFilter.Nearest);
-
         _shader = CreateDefaultShader();
         SetupFullscreenQuad();
     }
 
-    /// <summary>
-    /// Ensures the OpenGL texture matches the size of the connected video surface.
-    /// </summary>
-    private void ResizeTextureIfNeeded()
+    private int CreateShaderProgram(string vertexShaderName, string fragmentShaderName)
     {
-        if (_connectedSignal?.Surface == null)
-            return;
+        int vertex = GL.CreateShader(ShaderType.VertexShader);
+        GL.ShaderSource(vertex, LoadEmbeddedShader(vertexShaderName));
+        GL.CompileShader(vertex);
 
-        int width = _connectedSignal.Surface.Width;
-        int height = _connectedSignal.Surface.Height;
+        int fragment = GL.CreateShader(ShaderType.FragmentShader);
+        GL.ShaderSource(fragment, LoadEmbeddedShader(fragmentShaderName));
+        GL.CompileShader(fragment);
 
-        if (width != _currentTextureWidth || height != _currentTextureHeight)
-        {
-            GL.BindTexture(TextureTarget.Texture2D, _textureId);
-            GL.TexImage2D(TextureTarget.Texture2D, 0, PixelInternalFormat.R8, width, height, 0, PixelFormat.Red, PixelType.UnsignedByte, nint.Zero);
+        int program = GL.CreateProgram();
+        GL.AttachShader(program, vertex);
+        GL.AttachShader(program, fragment);
+        GL.LinkProgram(program);
 
-            _currentTextureWidth = width;
-            _currentTextureHeight = height;
-        }
+        GL.DeleteShader(vertex);
+        GL.DeleteShader(fragment);
+
+        return program;
     }
 
     /// <summary>
@@ -177,7 +173,35 @@ partial class Display : IVisualizable, IDrawable, ISettingsChangedNotifier
     public void Connect(VideoOutputSignal signal)
     {
         _connectedSignal = signal;
-        ResizeTextureIfNeeded();
+
+        int width = _connectedSignal.Surface.Width;
+        int height = _connectedSignal.Surface.Height;
+
+        // Create or resize emulator frame texture
+        if (_textureNewFrame == 0)
+        {
+            _textureNewFrame = GL.GenTexture();
+        }
+        GL.BindTexture(TextureTarget.Texture2D, _textureNewFrame);
+        GL.TexImage2D(TextureTarget.Texture2D, 0, PixelInternalFormat.R8, width, height, 0, PixelFormat.Red, PixelType.UnsignedByte, IntPtr.Zero);
+        GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)TextureMinFilter.Nearest);
+        GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)TextureMagFilter.Nearest);
+
+        // Create the shader pipeline
+        _shaderPipeline = new ShaderPipeline(width, height, _vao);
+
+        // Compile phosphor decay shader
+        int decayShader = CreateShaderProgram("PhosphorDecay.vert.glsl", "PhosphorDecay.frag.glsl");
+
+        _phosphorDecayEffect = new PhosphorDecayShaderEffect(
+            decayShader,
+            _vao,                               // <<< Pass VAO now!
+            () => _videoSettings.PhosphorDecayShader,
+            () => _videoSettings.DecayRate
+        );
+
+        // Add it to the pipeline
+        _shaderPipeline.AddEffect(_phosphorDecayEffect);
     }
 
     /// <summary>
@@ -259,33 +283,36 @@ partial class Display : IVisualizable, IDrawable, ISettingsChangedNotifier
     /// </summary>
     private void RenderSurface(int x, int y, int width, int height)
     {
-        if (_connectedSignal?.IsConnected != true) { return; }
+        if (_connectedSignal?.IsConnected != true) return;
 
         IRenderSurface surface = _connectedSignal.Surface;
 
-        ResizeTextureIfNeeded(); // Ensure size matches
-
-        GL.BindTexture(TextureTarget.Texture2D, _textureId);
-
-        // Upload latest pixel data
-        GL.TexSubImage2D(
-            TextureTarget.Texture2D,
-            0,
-            0, 0,
-            surface.Width,
-            surface.Height,
+        // ── 1. upload the fresh emulator pixels ────────────────────────────────
+        GL.BindTexture(TextureTarget.Texture2D, _textureNewFrame);
+        GL.TexSubImage2D(TextureTarget.Texture2D,
+            0, 0, 0,
+            surface.Width, surface.Height,
             PixelFormat.Red,
             PixelType.UnsignedByte,
-            surface.PixelData // CPU pointer to pixel data
-        );
+            surface.PixelData);
 
+        // ── 2. pass through the shader-pipeline (may apply phosphor decay) ────
+        int finalTexture = _shaderPipeline.Apply(_textureNewFrame,
+            surface.Width,
+            surface.Height);
+
+        // ── 3. draw that final texture to the window framebuffer ──────────────
+        GL.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
         GL.Viewport(x, y, width, height);
+
         GL.UseProgram(_shader);
+        GL.ActiveTexture(TextureUnit.Texture0);            // <-- ensure unit 0
+        GL.BindTexture(TextureTarget.Texture2D, finalTexture);
 
         if (_phosphorColorUniform >= 0)
         {
-            VideoSettings.PhosphorColor phosphor = _videoSettings.RenderPhosphorColor;
-            GL.Uniform3(_phosphorColorUniform, phosphor.Red, phosphor.Green, phosphor.Blue);
+            var p = _videoSettings.RenderPhosphorColor;
+            GL.Uniform3(_phosphorColorUniform, p.Red, p.Green, p.Blue);
         }
 
         GL.BindVertexArray(_vao);

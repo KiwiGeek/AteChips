@@ -23,6 +23,8 @@ public record VideoSettings
     public bool FullScreen { get; set; } = false;
     public PresetPhosphorColor? PhosphorColorType { get; set; } = PresetPhosphorColor.Amber;
     public PhosphorColor? CustomPhosphorColor { get; set; }
+    public bool PhosphorDecayShader { get; set; } = false;
+    public float DecayRate { get; set; } = 0.8f;
 
     [JsonIgnore]
     public PhosphorColor RenderPhosphorColor =>
