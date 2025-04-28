@@ -64,6 +64,8 @@ partial class Display : IVisualizable, IDrawable, ISettingsChangedNotifier
     /// </summary>
     private int _vbo;
 
+    private int _phosphorColorUniform;
+
     /// <summary>
     /// OpenGL shader program ID.
     /// </summary>
@@ -127,6 +129,7 @@ partial class Display : IVisualizable, IDrawable, ISettingsChangedNotifier
         _imGuiFrontEnd = new ImGuiFrontEnd(machine, [this]);
 
         _shader = Basic.CreateShaderProgram();
+        _phosphorColorUniform = GL.GetUniformLocation(_shader, "PhosphorColor");
         SetupFullscreenQuad();
     }
 
@@ -260,7 +263,7 @@ partial class Display : IVisualizable, IDrawable, ISettingsChangedNotifier
         GL.ActiveTexture(TextureUnit.Texture0);            // <-- ensure unit 0
         GL.BindTexture(TextureTarget.Texture2D, finalTexture);
 
-        GL.Uniform3(GL.GetUniformLocation(_shader, "PhosphorColor"), 
+        GL.Uniform3(_phosphorColorUniform, 
             _videoSettings.RenderPhosphorColor.Red, 
             _videoSettings.RenderPhosphorColor.Green, 
             _videoSettings.RenderPhosphorColor.Blue);
