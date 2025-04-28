@@ -17,12 +17,12 @@ public class PhosphorDecay : IShaderEffect
     public bool Enabled => _isEnabled();
     private readonly int _shader;
 
-    public PhosphorDecay(int fullscreenQuadVao, Func<bool> isEnabled, Func<float> decayRaye)
+    public PhosphorDecay(int fullscreenQuadVao, Func<bool> isEnabled, Func<float> decayRate)
     {
         _shader = CreateShaderProgram();
         _fullscreenQuadVao = fullscreenQuadVao;
         _isEnabled = isEnabled;
-        _decayRate = decayRaye;
+        _decayRate = decayRate;
     }
 
     // --------------------------------------------------------------------
