@@ -2,9 +2,6 @@
 using OpenTK.Windowing.Common;
 using OpenTK.Windowing.Desktop;
 using System;
-using System.IO;
-using System.Linq;
-using System.Reflection;
 using GameWindow = OpenTK.Windowing.Desktop.GameWindow;
 using OpenTK.Windowing.GraphicsLibraryFramework;
 using ClearBufferMask = OpenTK.Graphics.OpenGL4.ClearBufferMask;
@@ -15,6 +12,7 @@ using AteChips.Host.UI.ImGui;
 using AteChips.Core.Shared.Interfaces;
 using AteChips.Shared.Video;
 using Shared.Settings;
+using AteChips.Host.Video.Shaders;
 
 namespace AteChips.Host.Video;
 
@@ -39,11 +37,10 @@ partial class Display : IVisualizable, IDrawable, ISettingsChangedNotifier
     /// </summary>
     private VideoOutputSignal? _connectedSignal;
 
-    private VideoSettings _videoSettings;
+    private readonly VideoSettings _videoSettings;
 
-    private int _phosphorColorUniform;
+    //private int _phosphorColorUniform;
 
-    // todo: move window size to settings
     /// <summary>
     /// Saves the window size when toggling to fullscreen.
     /// </summary>
@@ -55,6 +52,8 @@ partial class Display : IVisualizable, IDrawable, ISettingsChangedNotifier
     /// </summary>
     private Vector2i _savedPosition;
 
+    private int _textureNewFrame;
+
     /// <summary>
     /// OpenGL Vertex Array Object ID.
     /// </summary>
@@ -65,14 +64,12 @@ partial class Display : IVisualizable, IDrawable, ISettingsChangedNotifier
     /// </summary>
     private int _vbo;
 
+    private int _phosphorColorUniform;
+
     /// <summary>
     /// OpenGL shader program ID.
     /// </summary>
-    private int _shader;
-
-    private int _textureId;
-    private int _currentTextureWidth = 0;
-    private int _currentTextureHeight = 0;
+    private readonly int _shader;
 
     /// <summary>
     /// The OpenTK window and OpenGL context host.
@@ -105,6 +102,7 @@ partial class Display : IVisualizable, IDrawable, ISettingsChangedNotifier
     /// Constructs the display system and sets up the rendering pipeline.
     /// </summary>
     /// <param name="machine">The emulated machine providing display specs.</param>
+    /// <param name="videoSettings">The video settings for the display.</param>
     public Display(IEmulatedMachine machine, VideoSettings videoSettings)
     {
         _videoSettings = videoSettings;
@@ -130,44 +128,9 @@ partial class Display : IVisualizable, IDrawable, ISettingsChangedNotifier
         GL.ClearColor(0f, 0f, 0f, 1f);
         _imGuiFrontEnd = new ImGuiFrontEnd(machine, [this]);
 
-        InitializeGl();
-    }
-
-    /// <summary>
-    /// Initializes the OpenGL texture, shader, and quad geometry.
-    /// </summary>
-    private void InitializeGl()
-    {
-        // Create empty texture, actual size will be allocated when connecting a signal
-        _textureId = GL.GenTexture();
-        GL.BindTexture(TextureTarget.Texture2D, _textureId);
-
-        GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)TextureMinFilter.Nearest);
-        GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)TextureMagFilter.Nearest);
-
-        _shader = CreateDefaultShader();
+        _shader = Basic.CreateShaderProgram();
+        _phosphorColorUniform = GL.GetUniformLocation(_shader, "PhosphorColor");
         SetupFullscreenQuad();
-    }
-
-    /// <summary>
-    /// Ensures the OpenGL texture matches the size of the connected video surface.
-    /// </summary>
-    private void ResizeTextureIfNeeded()
-    {
-        if (_connectedSignal?.Surface == null)
-            return;
-
-        int width = _connectedSignal.Surface.Width;
-        int height = _connectedSignal.Surface.Height;
-
-        if (width != _currentTextureWidth || height != _currentTextureHeight)
-        {
-            GL.BindTexture(TextureTarget.Texture2D, _textureId);
-            GL.TexImage2D(TextureTarget.Texture2D, 0, PixelInternalFormat.R8, width, height, 0, PixelFormat.Red, PixelType.UnsignedByte, nint.Zero);
-
-            _currentTextureWidth = width;
-            _currentTextureHeight = height;
-        }
     }
 
     /// <summary>
@@ -177,7 +140,22 @@ partial class Display : IVisualizable, IDrawable, ISettingsChangedNotifier
     public void Connect(VideoOutputSignal signal)
     {
         _connectedSignal = signal;
-        ResizeTextureIfNeeded();
+
+        int width = _connectedSignal.Surface.Width;
+        int height = _connectedSignal.Surface.Height;
+
+        // Create or resize emulator frame texture
+        if (_textureNewFrame == 0)
+        {
+            _textureNewFrame = GL.GenTexture();
+        }
+        GL.BindTexture(TextureTarget.Texture2D, _textureNewFrame);
+        GL.TexImage2D(TextureTarget.Texture2D, 0, PixelInternalFormat.R8, width, height, 0, PixelFormat.Red, PixelType.UnsignedByte, IntPtr.Zero);
+        GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)TextureMinFilter.Nearest);
+        GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)TextureMagFilter.Nearest);
+
+        // Add it to the pipeline
+        ShaderPipeline.AddEffect(new PhosphorDecay(_vao, () => _videoSettings.PhosphorDecayShader, () => _videoSettings.DecayRate));
     }
 
     /// <summary>
@@ -263,30 +241,32 @@ partial class Display : IVisualizable, IDrawable, ISettingsChangedNotifier
 
         IRenderSurface surface = _connectedSignal.Surface;
 
-        ResizeTextureIfNeeded(); // Ensure size matches
-
-        GL.BindTexture(TextureTarget.Texture2D, _textureId);
-
-        // Upload latest pixel data
-        GL.TexSubImage2D(
-            TextureTarget.Texture2D,
-            0,
-            0, 0,
-            surface.Width,
-            surface.Height,
+        // ── 1. upload the fresh emulator pixels ────────────────────────────────
+        GL.BindTexture(TextureTarget.Texture2D, _textureNewFrame);
+        GL.TexSubImage2D(TextureTarget.Texture2D,
+            0, 0, 0,
+            surface.Width, surface.Height,
             PixelFormat.Red,
             PixelType.UnsignedByte,
-            surface.PixelData // CPU pointer to pixel data
-        );
+            surface.PixelData);
 
+        // ── 2. pass through the shader-pipeline (may apply phosphor decay) ────
+        int finalTexture = ShaderPipeline.Apply(_textureNewFrame,
+            surface.Width,
+            surface.Height);
+
+        // ── 3. draw that final texture to the window framebuffer ──────────────
+        GL.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
         GL.Viewport(x, y, width, height);
-        GL.UseProgram(_shader);
 
-        if (_phosphorColorUniform >= 0)
-        {
-            VideoSettings.PhosphorColor phosphor = _videoSettings.RenderPhosphorColor;
-            GL.Uniform3(_phosphorColorUniform, phosphor.Red, phosphor.Green, phosphor.Blue);
-        }
+        GL.UseProgram(_shader);
+        GL.ActiveTexture(TextureUnit.Texture0);            // <-- ensure unit 0
+        GL.BindTexture(TextureTarget.Texture2D, finalTexture);
+
+        GL.Uniform3(_phosphorColorUniform, 
+            _videoSettings.RenderPhosphorColor.Red, 
+            _videoSettings.RenderPhosphorColor.Green, 
+            _videoSettings.RenderPhosphorColor.Blue);
 
         GL.BindVertexArray(_vao);
         GL.DrawArrays(PrimitiveType.Triangles, 0, 6);
@@ -322,12 +302,10 @@ partial class Display : IVisualizable, IDrawable, ISettingsChangedNotifier
         SettingsChanged?.Invoke();
     }
 
-    private double _lastGameTime = 0;
-    private double _lastRenderTime = 0;
-    private double _lastDrawTime = 0;
-    private double _messagePumpAccumulator = 0;
-
-    public bool ReadyToDraw(double gameTime) => (gameTime - _lastDrawTime) >= RENDER_INTERVAL;
+    private double _lastGameTime;
+    private double _lastRenderTime;
+    private readonly double _lastDrawTime = 0;
+    private double _messagePumpAccumulator;
 
     /// <summary>
     /// Called once per host frame to update the emulator window and render output.
@@ -354,8 +332,6 @@ partial class Display : IVisualizable, IDrawable, ISettingsChangedNotifier
         _lastGameTime = gameTime;
         return _shouldClose;
     }
-
-
 
     /// <summary>
     /// Handles window resize events and updates the GL viewport and ImGui layout.
@@ -431,61 +407,6 @@ partial class Display : IVisualizable, IDrawable, ISettingsChangedNotifier
         );
         GL.EnableVertexAttribArray(1);
     }
-
-    /// <summary>
-    /// Creates and compiles the default shader used for drawing the framebuffer.
-    /// This program includes a vertex shader (positions screen quad)
-    /// and a fragment shader (samples the framebuffer texture).
-    /// </summary>
-    /// <returns>OpenGL shader program ID.</returns>
-    private int CreateDefaultShader()
-    {
-        // Create and compile the vertex shader
-        int vertex = GL.CreateShader(ShaderType.VertexShader);
-        GL.ShaderSource(vertex, LoadEmbeddedShader("Basic.vert.glsl"));
-        GL.CompileShader(vertex);
-
-        // Create and compile the fragment shader
-        int fragment = GL.CreateShader(ShaderType.FragmentShader);
-        GL.ShaderSource(fragment, LoadEmbeddedShader("Basic.frag.glsl"));
-        GL.CompileShader(fragment);
-
-        // Create new shader program and attach both shaders to it, and then link
-        int program = GL.CreateProgram();
-        GL.AttachShader(program, vertex);
-        GL.AttachShader(program, fragment);
-        GL.LinkProgram(program);
-        _phosphorColorUniform = GL.GetUniformLocation(program, "u_PhosphorColor");
-        if (_phosphorColorUniform == -1)
-        {
-            Console.WriteLine("Warning: u_PhosphorColor uniform not found in shader.");
-        }
-
-        // Shaders are now part of the program, so we can delete the raw handles
-        GL.DeleteShader(vertex);
-        GL.DeleteShader(fragment);
-
-        // Return the linked shader program ID
-        return program;
-    }
-
-    /// <summary>
-    /// Loads an embedded shader resource by filename (case-insensitive match).
-    /// </summary>
-    /// <param name="resourceName">The name of the shader file (e.g., "Basic.vert.glsl").</param>
-    /// <returns>The contents of the shader source as a string.</returns>
-    public static string LoadEmbeddedShader(string resourceName)
-    {
-        Assembly assembly = Assembly.GetExecutingAssembly();
-        string fullResourceName = assembly
-            .GetManifestResourceNames()
-            .First(f => f.Contains(resourceName, StringComparison.InvariantCultureIgnoreCase));
-
-        using Stream stream = assembly.GetManifestResourceStream(fullResourceName)!;
-        using StreamReader reader = new(stream);
-        return reader.ReadToEnd();
-    }
-
 
     public double FrequencyHz => 60;
     public byte UpdatePriority => 0;

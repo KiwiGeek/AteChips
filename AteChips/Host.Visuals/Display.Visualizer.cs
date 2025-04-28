@@ -32,6 +32,26 @@ public partial class Display
 
         ImGui.SeparatorText("Visual Effects");
 
+        ImGuiWidgets.Checkbox("Phosphor Decay",
+            () => SettingsManager.Current.Display.VideoSettings.PhosphorDecayShader,
+            value =>
+            {
+                SettingsManager.Current.Display.VideoSettings.PhosphorDecayShader = value;
+                SettingsChanged?.Invoke();
+            });
+
+        if (_videoSettings.PhosphorDecayShader)
+        {
+            ImGuiWidgets.SliderFloat("Decay Rate", 
+                    () => _videoSettings.DecayRate,
+                    value =>
+                    {
+                        _videoSettings.DecayRate = value;
+                        SettingsChanged?.Invoke();
+                    }, 0.70f, 0.9999f);
+        }
+
+
         //ImGui.Checkbox("CRT Scanlines", ref _postProcessor.EnableScanlines);
         //if (_postProcessor.EnableScanlines &&
         //    ImGui.CollapsingHeader("Scanline Settings", ImGuiTreeNodeFlags.None))
