@@ -1,16 +1,13 @@
 ﻿#version 330 core
 
-out vec4 FragColor;
-
-in vec2 vTexCoord;
-
-uniform sampler2D uTexture;
-uniform vec3 u_PhosphorColor;
+in      vec2        TexCoord;
+out     vec4        FragColor;
+uniform sampler2D   Texture;
+uniform vec3        PhosphorColor;
 
 void main()
 {
-    float luminance = texture(uTexture, vTexCoord).r; // fetch RED only
-
-    vec3 color = luminance * u_PhosphorColor; // spread luminance across phosphor RGB
+    float luminance = texture(Texture, TexCoord).r;
+    vec3 color = luminance * PhosphorColor;
     FragColor = vec4(color, 1.0);
 }

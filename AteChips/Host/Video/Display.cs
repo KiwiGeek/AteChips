@@ -2,9 +2,6 @@
 using OpenTK.Windowing.Common;
 using OpenTK.Windowing.Desktop;
 using System;
-using System.IO;
-using System.Linq;
-using System.Reflection;
 using GameWindow = OpenTK.Windowing.Desktop.GameWindow;
 using OpenTK.Windowing.GraphicsLibraryFramework;
 using ClearBufferMask = OpenTK.Graphics.OpenGL4.ClearBufferMask;
@@ -40,15 +37,10 @@ partial class Display : IVisualizable, IDrawable, ISettingsChangedNotifier
     /// </summary>
     private VideoOutputSignal? _connectedSignal;
 
-    private VideoSettings _videoSettings;
+    private readonly VideoSettings _videoSettings;
 
-    private PhosphorDecayShaderEffect _phosphorDecayEffect;
+    //private int _phosphorColorUniform;
 
-    private int _phosphorColorUniform;
-
-    private ShaderPipeline _shaderPipeline;
-
-    // todo: move window size to settings
     /// <summary>
     /// Saves the window size when toggling to fullscreen.
     /// </summary>
@@ -75,7 +67,7 @@ partial class Display : IVisualizable, IDrawable, ISettingsChangedNotifier
     /// <summary>
     /// OpenGL shader program ID.
     /// </summary>
-    private int _shader;
+    private readonly int _shader;
 
     /// <summary>
     /// The OpenTK window and OpenGL context host.
@@ -108,6 +100,7 @@ partial class Display : IVisualizable, IDrawable, ISettingsChangedNotifier
     /// Constructs the display system and sets up the rendering pipeline.
     /// </summary>
     /// <param name="machine">The emulated machine providing display specs.</param>
+    /// <param name="videoSettings">The video settings for the display.</param>
     public Display(IEmulatedMachine machine, VideoSettings videoSettings)
     {
         _videoSettings = videoSettings;
@@ -133,37 +126,8 @@ partial class Display : IVisualizable, IDrawable, ISettingsChangedNotifier
         GL.ClearColor(0f, 0f, 0f, 1f);
         _imGuiFrontEnd = new ImGuiFrontEnd(machine, [this]);
 
-        InitializeGl();
-    }
-
-    /// <summary>
-    /// Initializes the OpenGL texture, shader, and quad geometry.
-    /// </summary>
-    private void InitializeGl()
-    {
-        _shader = CreateDefaultShader();
+        _shader = Basic.CreateShaderProgram();
         SetupFullscreenQuad();
-    }
-
-    private int CreateShaderProgram(string vertexShaderName, string fragmentShaderName)
-    {
-        int vertex = GL.CreateShader(ShaderType.VertexShader);
-        GL.ShaderSource(vertex, LoadEmbeddedShader(vertexShaderName));
-        GL.CompileShader(vertex);
-
-        int fragment = GL.CreateShader(ShaderType.FragmentShader);
-        GL.ShaderSource(fragment, LoadEmbeddedShader(fragmentShaderName));
-        GL.CompileShader(fragment);
-
-        int program = GL.CreateProgram();
-        GL.AttachShader(program, vertex);
-        GL.AttachShader(program, fragment);
-        GL.LinkProgram(program);
-
-        GL.DeleteShader(vertex);
-        GL.DeleteShader(fragment);
-
-        return program;
     }
 
     /// <summary>
@@ -187,21 +151,8 @@ partial class Display : IVisualizable, IDrawable, ISettingsChangedNotifier
         GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)TextureMinFilter.Nearest);
         GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)TextureMagFilter.Nearest);
 
-        // Create the shader pipeline
-        _shaderPipeline = new ShaderPipeline(width, height, _vao);
-
-        // Compile phosphor decay shader
-        int decayShader = CreateShaderProgram("PhosphorDecay.vert.glsl", "PhosphorDecay.frag.glsl");
-
-        _phosphorDecayEffect = new PhosphorDecayShaderEffect(
-            decayShader,
-            _vao,                               // <<< Pass VAO now!
-            () => _videoSettings.PhosphorDecayShader,
-            () => _videoSettings.DecayRate
-        );
-
         // Add it to the pipeline
-        _shaderPipeline.AddEffect(_phosphorDecayEffect);
+        ShaderPipeline.AddEffect(new PhosphorDecay(_vao, () => _videoSettings.PhosphorDecayShader, () => _videoSettings.DecayRate));
     }
 
     /// <summary>
@@ -283,7 +234,7 @@ partial class Display : IVisualizable, IDrawable, ISettingsChangedNotifier
     /// </summary>
     private void RenderSurface(int x, int y, int width, int height)
     {
-        if (_connectedSignal?.IsConnected != true) return;
+        if (_connectedSignal?.IsConnected != true) { return; }
 
         IRenderSurface surface = _connectedSignal.Surface;
 
@@ -297,7 +248,7 @@ partial class Display : IVisualizable, IDrawable, ISettingsChangedNotifier
             surface.PixelData);
 
         // ── 2. pass through the shader-pipeline (may apply phosphor decay) ────
-        int finalTexture = _shaderPipeline.Apply(_textureNewFrame,
+        int finalTexture = ShaderPipeline.Apply(_textureNewFrame,
             surface.Width,
             surface.Height);
 
@@ -309,11 +260,10 @@ partial class Display : IVisualizable, IDrawable, ISettingsChangedNotifier
         GL.ActiveTexture(TextureUnit.Texture0);            // <-- ensure unit 0
         GL.BindTexture(TextureTarget.Texture2D, finalTexture);
 
-        if (_phosphorColorUniform >= 0)
-        {
-            var p = _videoSettings.RenderPhosphorColor;
-            GL.Uniform3(_phosphorColorUniform, p.Red, p.Green, p.Blue);
-        }
+        GL.Uniform3(GL.GetUniformLocation(_shader, "PhosphorColor"), 
+            _videoSettings.RenderPhosphorColor.Red, 
+            _videoSettings.RenderPhosphorColor.Green, 
+            _videoSettings.RenderPhosphorColor.Blue);
 
         GL.BindVertexArray(_vao);
         GL.DrawArrays(PrimitiveType.Triangles, 0, 6);
@@ -349,12 +299,10 @@ partial class Display : IVisualizable, IDrawable, ISettingsChangedNotifier
         SettingsChanged?.Invoke();
     }
 
-    private double _lastGameTime = 0;
-    private double _lastRenderTime = 0;
-    private double _lastDrawTime = 0;
-    private double _messagePumpAccumulator = 0;
-
-    public bool ReadyToDraw(double gameTime) => (gameTime - _lastDrawTime) >= RENDER_INTERVAL;
+    private double _lastGameTime;
+    private double _lastRenderTime;
+    private readonly double _lastDrawTime = 0;
+    private double _messagePumpAccumulator;
 
     /// <summary>
     /// Called once per host frame to update the emulator window and render output.
@@ -381,8 +329,6 @@ partial class Display : IVisualizable, IDrawable, ISettingsChangedNotifier
         _lastGameTime = gameTime;
         return _shouldClose;
     }
-
-
 
     /// <summary>
     /// Handles window resize events and updates the GL viewport and ImGui layout.
@@ -458,61 +404,6 @@ partial class Display : IVisualizable, IDrawable, ISettingsChangedNotifier
         );
         GL.EnableVertexAttribArray(1);
     }
-
-    /// <summary>
-    /// Creates and compiles the default shader used for drawing the framebuffer.
-    /// This program includes a vertex shader (positions screen quad)
-    /// and a fragment shader (samples the framebuffer texture).
-    /// </summary>
-    /// <returns>OpenGL shader program ID.</returns>
-    private int CreateDefaultShader()
-    {
-        // Create and compile the vertex shader
-        int vertex = GL.CreateShader(ShaderType.VertexShader);
-        GL.ShaderSource(vertex, LoadEmbeddedShader("Basic.vert.glsl"));
-        GL.CompileShader(vertex);
-
-        // Create and compile the fragment shader
-        int fragment = GL.CreateShader(ShaderType.FragmentShader);
-        GL.ShaderSource(fragment, LoadEmbeddedShader("Basic.frag.glsl"));
-        GL.CompileShader(fragment);
-
-        // Create new shader program and attach both shaders to it, and then link
-        int program = GL.CreateProgram();
-        GL.AttachShader(program, vertex);
-        GL.AttachShader(program, fragment);
-        GL.LinkProgram(program);
-        _phosphorColorUniform = GL.GetUniformLocation(program, "u_PhosphorColor");
-        if (_phosphorColorUniform == -1)
-        {
-            Console.WriteLine("Warning: u_PhosphorColor uniform not found in shader.");
-        }
-
-        // Shaders are now part of the program, so we can delete the raw handles
-        GL.DeleteShader(vertex);
-        GL.DeleteShader(fragment);
-
-        // Return the linked shader program ID
-        return program;
-    }
-
-    /// <summary>
-    /// Loads an embedded shader resource by filename (case-insensitive match).
-    /// </summary>
-    /// <param name="resourceName">The name of the shader file (e.g., "Basic.vert.glsl").</param>
-    /// <returns>The contents of the shader source as a string.</returns>
-    public static string LoadEmbeddedShader(string resourceName)
-    {
-        Assembly assembly = Assembly.GetExecutingAssembly();
-        string fullResourceName = assembly
-            .GetManifestResourceNames()
-            .First(f => f.Contains(resourceName, StringComparison.InvariantCultureIgnoreCase));
-
-        using Stream stream = assembly.GetManifestResourceStream(fullResourceName)!;
-        using StreamReader reader = new(stream);
-        return reader.ReadToEnd();
-    }
-
 
     public double FrequencyHz => 60;
     public byte UpdatePriority => 0;

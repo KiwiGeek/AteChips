@@ -1,26 +1,21 @@
-﻿using AteChips.Host.Video.Shaders;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 
-public class ShaderPipeline
+namespace AteChips.Host.Video.Shaders;
+
+public static class ShaderPipeline
 {
-    private readonly List<IShaderEffect> _effects = new();
-    private readonly int _fullscreenQuadVao;
+    private static readonly List<IShaderEffect> Effects = [];
 
-    public ShaderPipeline(int width, int height, int fullscreenQuadVao)
+    public static void AddEffect(IShaderEffect effect)
     {
-        _fullscreenQuadVao = fullscreenQuadVao;
+        Effects.Add(effect);
     }
 
-    public void AddEffect(IShaderEffect effect)
-    {
-        _effects.Add(effect);
-    }
-
-    public int Apply(int newFrameTexture, int width, int height)
+    public static int Apply(int newFrameTexture, int width, int height)
     {
         int currentTexture = newFrameTexture;
 
-        foreach (var effect in _effects)
+        foreach (IShaderEffect effect in Effects)
         {
             if (effect.Enabled)
             {
