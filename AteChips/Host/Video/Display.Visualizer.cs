@@ -34,12 +34,8 @@ public partial class Display
 
         PhosphorDecay();
         CrtScanLines();
+        Bloom();
         
-
-
-
-        //ImGui.Checkbox("Bloom", ref _postProcessor.EnableBloom);
-
         //ImGui.Checkbox("Curvature", ref _postProcessor.EnableCurvature);
         //if (_postProcessor.EnableCurvature &&
         //    ImGui.CollapsingHeader("Curvature Settings", ImGuiTreeNodeFlags.None))
@@ -53,8 +49,6 @@ public partial class Display
 
         //ImGui.Checkbox("Vignette", ref _postProcessor.EnableVignette);
         //ImGui.Checkbox("Chromatic Aberration", ref _postProcessor.EnableChromatic);
-
-        //PhosphorDecay();
 
         ImGuiWindowSettingsManager.Update(settings);
         ImGui.End();
@@ -139,66 +133,66 @@ public partial class Display
     {
 
         ImGuiWidgets.Checkbox("CRT Scan lines",
-            () => SettingsManager.Current.Display.VideoSettings.ScanlineShaderSettings.IsEnabled,
+            () => SettingsManager.Current.Display.VideoSettings.ScanlineSettings.IsEnabled,
             value =>
             {
-                SettingsManager.Current.Display.VideoSettings.ScanlineShaderSettings.IsEnabled = value;
+                SettingsManager.Current.Display.VideoSettings.ScanlineSettings.IsEnabled = value;
                 SettingsChanged?.Invoke();
             });
         // Scanline Shader Parameters
-        if (_videoSettings.ScanlineShaderSettings.IsEnabled)
+        if (_videoSettings.ScanlineSettings.IsEnabled)
         {
             ImGuiWidgets.SliderFloat("Scanline Intensity",
-                () => _videoSettings.ScanlineShaderSettings.Intensity,
+                () => _videoSettings.ScanlineSettings.Intensity,
                 value =>
                 {
-                    _videoSettings.ScanlineShaderSettings.Intensity = value;
+                    _videoSettings.ScanlineSettings.Intensity = value;
                     SettingsChanged?.Invoke();
                 }, 0.0f, 2.0f);
 
             ImGuiWidgets.SliderFloat("Scanline Sharpness",
-                () => _videoSettings.ScanlineShaderSettings.Sharpness,
+                () => _videoSettings.ScanlineSettings.Sharpness,
                 value =>
                 {
-                    _videoSettings.ScanlineShaderSettings.Sharpness = value;
+                    _videoSettings.ScanlineSettings.Sharpness = value;
                     SettingsChanged?.Invoke();
                 }, 0.0f, 2.0f);
 
             ImGuiWidgets.SliderFloat("Bleed Amount",
-                () => _videoSettings.ScanlineShaderSettings.BleedAmount,
+                () => _videoSettings.ScanlineSettings.BleedAmount,
                 value =>
                 {
-                    _videoSettings.ScanlineShaderSettings.BleedAmount = value;
+                    _videoSettings.ScanlineSettings.BleedAmount = value;
                     SettingsChanged?.Invoke();
                 });
 
             ImGuiWidgets.SliderFloat("Flicker Strength",
-                () => _videoSettings.ScanlineShaderSettings.FlickerStrength,
+                () => _videoSettings.ScanlineSettings.FlickerStrength,
                 value =>
                 {
-                    _videoSettings.ScanlineShaderSettings.FlickerStrength = value;
+                    _videoSettings.ScanlineSettings.FlickerStrength = value;
                     SettingsChanged?.Invoke();
                 });
 
             ImGuiWidgets.SliderFloat("Mask Strength",
-                () => _videoSettings.ScanlineShaderSettings.MaskStrength,
+                () => _videoSettings.ScanlineSettings.MaskStrength,
                 value =>
                 {
-                    _videoSettings.ScanlineShaderSettings.MaskStrength = value;
+                    _videoSettings.ScanlineSettings.MaskStrength = value;
                     SettingsChanged?.Invoke();
                 });
 
             ImGuiWidgets.SliderFloat("Slot Sharpness",
-                () => _videoSettings.ScanlineShaderSettings.SlotSharpness,
+                () => _videoSettings.ScanlineSettings.SlotSharpness,
                 value =>
                 {
-                    _videoSettings.ScanlineShaderSettings.SlotSharpness = value;
+                    _videoSettings.ScanlineSettings.SlotSharpness = value;
                     SettingsChanged?.Invoke();
                 }, 0.0f, 2.0f);
 
             if (ImGui.Button("Preset: 1980s Arcade CRT"))
             {
-                ScanlineSettings s = _videoSettings.ScanlineShaderSettings;
+                ScanlineSettings s = _videoSettings.ScanlineSettings;
                 s.Intensity = 0.6f;
                 s.Sharpness = 1.4f;
                 s.BleedAmount = 0.2f;
@@ -210,7 +204,7 @@ public partial class Display
             ImGui.SameLine();
             if (ImGui.Button("Preset: 1990s PC Monitor CRT"))
             {
-                ScanlineSettings s = _videoSettings.ScanlineShaderSettings;
+                ScanlineSettings s = _videoSettings.ScanlineSettings;
                 s.Intensity = 0.4f;
                 s.Sharpness = 1.6f;
                 s.BleedAmount = 0.08f;
@@ -220,6 +214,37 @@ public partial class Display
                 SettingsChanged?.Invoke();
             }
         }
+    }
+
+    private void Bloom()
+    {
+        ImGuiWidgets.Checkbox("Bloom Glow",
+            () => SettingsManager.Current.Display.VideoSettings.BloomSettings.IsEnabled,
+            value =>
+            {
+                SettingsManager.Current.Display.VideoSettings.BloomSettings.IsEnabled = value;
+                SettingsChanged?.Invoke();
+            });
+
+        if (_videoSettings.BloomSettings.IsEnabled)
+        {
+            ImGuiWidgets.SliderFloat("Bloom Threshold",
+                () => _videoSettings.BloomSettings.Threshold,
+                value =>
+                {
+                    _videoSettings.BloomSettings.Threshold = value;
+                    SettingsChanged?.Invoke();
+                }, 0.0f, 2.0f);
+
+            ImGuiWidgets.SliderFloat("Bloom Intensity",
+                () => _videoSettings.BloomSettings.Intensity,
+                value =>
+                {
+                    _videoSettings.BloomSettings.Intensity = value;
+                    SettingsChanged?.Invoke();
+                }, 0.0f, 3.0f);
+        }
+
     }
 
 

@@ -27,7 +27,9 @@ public record VideoSettings
     
     public PhosphorDecaySettings PhosphorDecaySettings { get; set; } = new();
 
-    public ScanlineSettings ScanlineShaderSettings { get; set; } = new();
+    public ScanlineSettings ScanlineSettings { get; set; } = new();
+
+    public BloomSettings BloomSettings { get; set; } = new();
 
     [JsonIgnore]
     public PhosphorColor RenderPhosphorColor =>
