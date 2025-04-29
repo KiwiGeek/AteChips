@@ -1,18 +1,23 @@
 ﻿#version 330 core
 
-in      vec2        TexCoord;
-out     vec4        FragColor;
-uniform sampler2D   History;
-uniform sampler2D   NewFrame;
-uniform float       DecayRate;
+out vec4 FragColor;
+
+in vec2 TexCoord;
+
+uniform sampler2D PrevFrame;
+uniform sampler2D NewFrame;
+uniform vec2 Resolution;
+uniform float DecayRate;
 
 void main()
 {
-    vec2 tc = vec2(TexCoord.x, 1.0 - TexCoord.y);
+    vec2 uv = gl_FragCoord.xy / Resolution;
 
-    float old = texture(History, tc).r;
-    float cur = texture(NewFrame, tc).r;
+    vec4 prevColor = texture(PrevFrame, uv);
+    vec4 newColor = texture(NewFrame, uv);
 
-    float result = max(cur, old * DecayRate);
-    FragColor    = vec4(result);
+    // Blend new color into old color based on decay rate
+    vec4 blended = mix(newColor, prevColor, DecayRate);
+
+    FragColor = blended;
 }
