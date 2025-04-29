@@ -35,7 +35,10 @@
 	</PropertyGroup>
 
 	<ItemGroup>
+	  <Compile Remove="Host.Visuals\**" />
+	  <EmbeddedResource Remove="Host.Visuals\**" />
 	  <None Remove="**\*.glsl" />
+	  <None Remove="Host.Visuals\**" />
 	  <EmbeddedResource Include="**\*.glsl" />
 	</ItemGroup>
 
@@ -46,7 +49,6 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<Folder Include="Host.Visuals\" />
 		<Folder Include="Shared\Utilities\" />
 	</ItemGroup>
 

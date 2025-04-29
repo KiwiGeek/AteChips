@@ -156,7 +156,8 @@ partial class Display : IVisualizable, IDrawable, ISettingsChangedNotifier
 
         // Add it to the pipeline
         ShaderPipeline.AddEffect(new PhosphorDecay(_vao, _videoSettings.PhosphorDecaySettings));
-        ShaderPipeline.AddEffect(new Scanlines(_vao, _videoSettings.ScanlineShaderSettings));
+        ShaderPipeline.AddEffect(new Scanlines(_vao, _videoSettings.ScanlineSettings));
+        ShaderPipeline.AddEffect(new Bloom(_vao, _videoSettings.BloomSettings));
     }
 
     /// <summary>
