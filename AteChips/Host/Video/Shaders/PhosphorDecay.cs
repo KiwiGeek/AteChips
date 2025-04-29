@@ -1,119 +1,117 @@
-﻿using System;
-using AteChips.Host.Video.EffectSettings;
+﻿using AteChips.Host.Video.EffectSettings;
 using OpenTK.Graphics.OpenGL4;
+using OpenTK.Mathematics;
+using System;
 
-namespace AteChips.Host.Video.Shaders;
-
-public class PhosphorDecay : IShaderEffect
+namespace AteChips.Host.Video.Shaders
 {
-
-    private readonly int _fullscreenQuadVao;
-
-    private int _textureA, _textureB;                       // two history textures
-    private int _framebufferObjectA, _framebufferObjectB;   // their FBOs
-    private bool _useA = true;                              // which one will receive next frame
-
-    private readonly int _shader;
-    private PhosphorDecaySettings _settings;
-
-    public PhosphorDecay(int fullscreenQuadVao, PhosphorDecaySettings settings)
+    public class PhosphorDecay : IShaderEffect
     {
-        _shader = CreateShaderProgram();
-        _fullscreenQuadVao = fullscreenQuadVao;
-        _settings = settings;
-    }
+        private readonly PhosphorDecaySettings _settings;
+        private readonly int _fullscreenQuadVao;
 
-    // --------------------------------------------------------------------
-    // IShaderEffect
-    // --------------------------------------------------------------------
-    public int Apply(int newFrameTex, int width, int height)
-    {
-        if (!_settings.IsEnabled) { return newFrameTex; }
+        private readonly int _shader;
+        private int _framebuffer;
+        private int _texture;
+        private int _width;
+        private int _height;
 
-        EnsureHistoryTexture(width, height);
+        private int _prevFrameLocation;
+        private int _newFrameLocation;
+        private int _resolutionLocation;
+        private int _decayRateLocation;
 
-        int sourceTexture = _useA ? _textureA : _textureB;                                  // previous history
-        int destFrameBufferObject = _useA ? _framebufferObjectB : _framebufferObjectA;      // where we write now
-        int destTexture = _useA ? _textureB : _textureA;                                    // texture attached there
-        _useA ^= true;                                                                      // toggle for next frame
-
-        // --- render blend into dstTex -----------------------------------
-        GL.BindFramebuffer(FramebufferTarget.Framebuffer, destFrameBufferObject);
-        GL.Viewport(0, 0, width, height);
-        GL.UseProgram(_shader);
-
-        GL.ActiveTexture(TextureUnit.Texture0);
-        GL.BindTexture(TextureTarget.Texture2D, sourceTexture);
-        GL.Uniform1(GL.GetUniformLocation(_shader, "History"), 0);
-
-        GL.ActiveTexture(TextureUnit.Texture1);
-        GL.BindTexture(TextureTarget.Texture2D, newFrameTex);
-        GL.Uniform1(GL.GetUniformLocation(_shader, "NewFrame"), 1);
-
-        GL.Uniform1(GL.GetUniformLocation(_shader, "DecayRate"), _settings.DecayRate);
-
-        GL.BindVertexArray(_fullscreenQuadVao);
-        GL.DrawArrays(PrimitiveType.Triangles, 0, 6);
-
-        // clean up state for caller
-        GL.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
-        GL.ActiveTexture(TextureUnit.Texture0);
-
-        return destTexture;   // new blended frame
-    }
-
-    // --------------------------------------------------------------------
-    // helper: lazily create the two textures/FBOs
-    // --------------------------------------------------------------------
-    private void EnsureHistoryTexture(int w, int h)
-    {
-        if (_textureA != 0) { return; } // already created
-
-        (_textureA, _framebufferObjectA) = CreatePair(w, h);
-        (_textureB, _framebufferObjectB) = CreatePair(w, h);
-
-        // clear both history textures once
-        foreach (int fbo in new[] { _framebufferObjectA, _framebufferObjectB })
+        public PhosphorDecay(int fullscreenQuadVao, PhosphorDecaySettings settings)
         {
-            GL.BindFramebuffer(FramebufferTarget.Framebuffer, fbo);
-            GL.ClearColor(0, 0, 0, 0);
-            GL.Clear(ClearBufferMask.ColorBufferBit);
+            _fullscreenQuadVao = fullscreenQuadVao;
+            _settings = settings;
+            _shader = CreateShaderProgram();
         }
-        GL.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
+
+        private int CreateShaderProgram()
+        {
+            int vertex = IShaderEffect.CreateShader("Basic.vert.glsl", ShaderType.VertexShader);
+            int fragment = IShaderEffect.CreateShader("PhosphorDecay.frag.glsl", ShaderType.FragmentShader);
+
+            int program = GL.CreateProgram();
+            GL.AttachShader(program, vertex);
+            GL.AttachShader(program, fragment);
+            GL.LinkProgram(program);
+
+            GL.DeleteShader(vertex);
+            GL.DeleteShader(fragment);
+
+            _prevFrameLocation = GL.GetUniformLocation(program, "PrevFrame");
+            _newFrameLocation = GL.GetUniformLocation(program, "NewFrame");
+            _resolutionLocation = GL.GetUniformLocation(program, "Resolution");
+            _decayRateLocation = GL.GetUniformLocation(program, "DecayRate");
+
+            return program;
+        }
+
+        private void CreateOrResizeFramebuffer(int width, int height)
+        {
+            if (_texture != 0 && (width == _width && height == _height))
+            {
+                return;
+            }
+
+            if (_framebuffer != 0)
+            {
+                GL.DeleteFramebuffer(_framebuffer);
+                GL.DeleteTexture(_texture);
+            }
+
+            _texture = GL.GenTexture();
+            GL.BindTexture(TextureTarget.Texture2D, _texture);
+            GL.TexImage2D(TextureTarget.Texture2D, 0, PixelInternalFormat.Rgba8, width, height, 0,
+                          PixelFormat.Rgba, PixelType.UnsignedByte, IntPtr.Zero);
+            GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)TextureMinFilter.Linear);
+            GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)TextureMagFilter.Linear);
+
+            _framebuffer = GL.GenFramebuffer();
+            GL.BindFramebuffer(FramebufferTarget.Framebuffer, _framebuffer);
+            GL.FramebufferTexture2D(FramebufferTarget.Framebuffer, FramebufferAttachment.ColorAttachment0,
+                                    TextureTarget.Texture2D, _texture, 0);
+
+            GL.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
+
+            _width = width;
+            _height = height;
+        }
+
+        public int Apply(int newFrameTex, int width, int height)
+        {
+            if (!_settings.IsEnabled)
+            {
+                return newFrameTex;
+            }
+
+            CreateOrResizeFramebuffer(width, height);
+
+            GL.BindFramebuffer(FramebufferTarget.Framebuffer, _framebuffer);
+            GL.Viewport(0, 0, width, height);
+
+            GL.UseProgram(_shader);
+
+            GL.ActiveTexture(TextureUnit.Texture0);
+            GL.BindTexture(TextureTarget.Texture2D, _texture);
+            GL.Uniform1(_prevFrameLocation, 0);
+
+            GL.ActiveTexture(TextureUnit.Texture1);
+            GL.BindTexture(TextureTarget.Texture2D, newFrameTex);
+            GL.Uniform1(_newFrameLocation, 1);
+
+            GL.Uniform2(_resolutionLocation, new Vector2(width, height));
+            GL.Uniform1(_decayRateLocation, _settings.DecayRate);
+
+            GL.BindVertexArray(_fullscreenQuadVao);
+            GL.DrawArrays(PrimitiveType.Triangles, 0, 6);
+            GL.BindVertexArray(0);
+
+            GL.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
+
+            return _texture;
+        }
     }
-
-    private static (int tex, int fbo) CreatePair(int w, int h)
-    {
-        int tex = GL.GenTexture();
-        GL.BindTexture(TextureTarget.Texture2D, tex);
-        GL.TexImage2D(TextureTarget.Texture2D, 0, PixelInternalFormat.R8,
-            w, h, 0, PixelFormat.Red, PixelType.UnsignedByte, IntPtr.Zero);
-        GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)TextureMinFilter.Nearest);
-        GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)TextureMagFilter.Nearest);
-
-        int fbo = GL.GenFramebuffer();
-        GL.BindFramebuffer(FramebufferTarget.Framebuffer, fbo);
-        GL.FramebufferTexture2D(FramebufferTarget.Framebuffer,
-            FramebufferAttachment.ColorAttachment0,
-            TextureTarget.Texture2D, tex, 0);
-
-        return (tex, fbo);
-    }
-
-    private static int CreateShaderProgram()
-    {
-        int vertex = IShaderEffect.CreateShader("Basic.vert.glsl", ShaderType.VertexShader);
-        int fragment = IShaderEffect.CreateShader("PhosphorDecay.frag.glsl", ShaderType.FragmentShader);
-
-        int program = GL.CreateProgram();
-        GL.AttachShader(program, vertex);
-        GL.AttachShader(program, fragment);
-        GL.LinkProgram(program);
-
-        GL.DeleteShader(vertex);
-        GL.DeleteShader(fragment);
-
-        return program;
-    }
-
 }

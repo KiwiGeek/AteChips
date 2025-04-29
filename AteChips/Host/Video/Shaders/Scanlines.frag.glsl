@@ -1,5 +1,3 @@
-
-// Shaders/Scanlines.frag
 #version 330 core
 out vec4 FragColor;
 
@@ -18,33 +16,36 @@ uniform vec2 Resolution;
 void main()
 {
     vec2 uv = vec2(TexCoord.x, 1.0 - TexCoord.y);
+
+    // Texture sampling
     vec4 color = texture(Texture, uv);
 
-    // Better scanline pattern
-    float scanline = sin(uv.y * Resolution.y * 3.14159) * 0.5 + 0.5;
-    scanline = pow(scanline, Sharpness * 10.0);
-    scanline = clamp(scanline, 0.3, 1.0);
-    
-    // Calculate "frame number" (assuming ~60 FPS)
-    float frame = floor(Time * 60.0);
-    
-    // Flicker: randomize slightly per frame
-    float flicker = fract(sin(frame * 12.9898) * 43758.5453);
-    flicker = (flicker * 2.0 - 1.0) * FlickerStrength;
-    
-    // Bleed
-    vec4 bleedUp   = texture(Texture, uv + vec2(0.0,  1.0 / Resolution.y));
-    vec4 bleedDown = texture(Texture, uv - vec2(0.0,  1.0 / Resolution.y));
-    vec4 bleed     = (bleedUp + bleedDown) * (BleedAmount * 0.5);
-    
-    // Mask
-    float mask = sin(uv.x * Resolution.x * 0.3) * sin(uv.y * Resolution.y * 0.8);
+    // --- Scanlines ---
+    float pixelY = Resolution.y * uv.y; // pixel-space Y
+    float pixelsPerScanline = 2.0; //  How many physical pixels between dark/light cycles (can expose to ImGui later)
+    float phase = 3.14159 * pixelY / pixelsPerScanline;
+    float scan = sin(phase);
+    float normalizedScan = (scan + 1.0) * 0.5;
+    float modulation = mix(1.0, normalizedScan, Intensity);
+
+    // --- Flicker ---
+    float frame = floor(Time * 60.0); // ~60fps assumption
+    float flickerNoise = fract(sin(frame * 12.9898) * 43758.5453); // randomish per frame
+    float flicker = (flickerNoise * 2.0 - 1.0) * FlickerStrength;
+    modulation += flicker;
+
+    // --- Bleed (vertical) ---
+    vec4 bleedUp   = texture(Texture, uv + vec2(0.0, 1.0 / Resolution.y));
+    vec4 bleedDown = texture(Texture, uv - vec2(0.0, 1.0 / Resolution.y));
+    vec4 bleed = (bleedUp + bleedDown) * (BleedAmount * 0.5);
+
+    // --- RGB Mask ---
+    float pixelX = Resolution.x * uv.x;
+    float mask = sin(pixelX * 3.14159 / 1.5) * sin(pixelY * 3.14159 / 1.5); 
     mask = pow(abs(mask), SlotSharpness * 5.0);
-    
-    // Correct modulation
-    float modulation = 1.0 - (1.0 - scanline) * Intensity;
-    modulation += flicker + (mask * MaskStrength);
+    modulation += mask * MaskStrength;
+
+    // --- Final output ---
     modulation = clamp(modulation, 0.0, 1.5);
-    
     FragColor = (color + bleed) * modulation;
 }

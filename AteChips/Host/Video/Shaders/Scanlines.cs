@@ -64,8 +64,7 @@ namespace AteChips.Host.Video.Shaders
 
         public int Apply(int sourceTex, int width, int height)
         {
-            if (!_settings.IsEnabled)
-                return sourceTex;
+            if (!_settings.IsEnabled) { return sourceTex;}
 
             // 1) (Re)allocate offscreen FBO + texture if size changed
             if (_fbo == 0 || _fboW != width || _fboH != height)
@@ -120,11 +119,7 @@ namespace AteChips.Host.Video.Shaders
             float t = (float)_clock.Elapsed.TotalSeconds;
             GL.Uniform1(_timeLoc, t);
 
-            // **Use the width/height passed in** for Resolution
             GL.Uniform2(_resLoc, new Vector2(width, height));
-
-            GL.Disable(EnableCap.DepthTest);
-            GL.Disable(EnableCap.ScissorTest);
 
             GL.BindVertexArray(_fullscreenQuadVao);
             GL.DrawArrays(PrimitiveType.Triangles, 0, 6);
