@@ -16,8 +16,7 @@ void main()
     vec4 prevColor = texture(PrevFrame, uv);
     vec4 newColor = texture(NewFrame, uv);
 
-    // Blend new color into old color based on decay rate
-    vec4 blended = mix(newColor, prevColor, DecayRate);
+    vec4 decayed = prevColor * DecayRate;
 
-    FragColor = blended;
+    FragColor = max(decayed, newColor);
 }

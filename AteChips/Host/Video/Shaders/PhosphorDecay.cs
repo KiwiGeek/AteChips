@@ -7,28 +7,28 @@ namespace AteChips.Host.Video.Shaders
 {
     public class PhosphorDecay : IShaderEffect
     {
-        private int _framebuffer;
-        private int _texture;          // The persistent decay texture
-        private int _shaderProgram;
-        private int _resolutionLocation;
-        private int _decayRateLocation;
-        private int _prevFrameLocation;
-        private int _newFrameLocation;
-        private int _vao;
+        private readonly PhosphorDecaySettings _settings;
+        private readonly int _fullscreenQuadVao;
 
+        private readonly int _shader;
+        private int _framebuffer;
+        private int _texture;
         private int _width;
         private int _height;
 
-        private readonly PhosphorDecaySettings _settings;
+        private int _prevFrameLocation;
+        private int _newFrameLocation;
+        private int _resolutionLocation;
+        private int _decayRateLocation;
 
         public PhosphorDecay(int fullscreenQuadVao, PhosphorDecaySettings settings)
         {
-            _vao = fullscreenQuadVao;
+            _fullscreenQuadVao = fullscreenQuadVao;
             _settings = settings;
-            _shaderProgram = CreateShader();
+            _shader = CreateShaderProgram();
         }
 
-        private int CreateShader()
+        private int CreateShaderProgram()
         {
             int vertex = IShaderEffect.CreateShader("Basic.vert.glsl", ShaderType.VertexShader);
             int fragment = IShaderEffect.CreateShader("PhosphorDecay.frag.glsl", ShaderType.FragmentShader);
@@ -41,16 +41,21 @@ namespace AteChips.Host.Video.Shaders
             GL.DeleteShader(vertex);
             GL.DeleteShader(fragment);
 
-            _resolutionLocation = GL.GetUniformLocation(program, "Resolution");
-            _decayRateLocation = GL.GetUniformLocation(program, "DecayRate");
             _prevFrameLocation = GL.GetUniformLocation(program, "PrevFrame");
             _newFrameLocation = GL.GetUniformLocation(program, "NewFrame");
+            _resolutionLocation = GL.GetUniformLocation(program, "Resolution");
+            _decayRateLocation = GL.GetUniformLocation(program, "DecayRate");
 
             return program;
         }
 
-        private void CreateFramebuffer(int width, int height)
+        private void CreateOrResizeFramebuffer(int width, int height)
         {
+            if (_texture != 0 && (width == _width && height == _height))
+            {
+                return;
+            }
+
             if (_framebuffer != 0)
             {
                 GL.DeleteFramebuffer(_framebuffer);
@@ -59,7 +64,7 @@ namespace AteChips.Host.Video.Shaders
 
             _texture = GL.GenTexture();
             GL.BindTexture(TextureTarget.Texture2D, _texture);
-            GL.TexImage2D(TextureTarget.Texture2D, 0, PixelInternalFormat.Rgba, width, height, 0,
+            GL.TexImage2D(TextureTarget.Texture2D, 0, PixelInternalFormat.Rgba8, width, height, 0,
                           PixelFormat.Rgba, PixelType.UnsignedByte, IntPtr.Zero);
             GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)TextureMinFilter.Linear);
             GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)TextureMagFilter.Linear);
@@ -79,42 +84,33 @@ namespace AteChips.Host.Video.Shaders
         {
             if (!_settings.IsEnabled)
             {
-                return newFrameTex; // No effect applied
+                return newFrameTex;
             }
 
-            if (_framebuffer == 0 || width != _width || height != _height)
-            {
-                CreateFramebuffer(width, height);
-            }
+            CreateOrResizeFramebuffer(width, height);
 
-            // --- Blend new frame into decay texture ---
             GL.BindFramebuffer(FramebufferTarget.Framebuffer, _framebuffer);
             GL.Viewport(0, 0, width, height);
 
-            GL.UseProgram(_shaderProgram);
+            GL.UseProgram(_shader);
 
-            // Bind decay texture to slot 0
             GL.ActiveTexture(TextureUnit.Texture0);
             GL.BindTexture(TextureTarget.Texture2D, _texture);
             GL.Uniform1(_prevFrameLocation, 0);
 
-            // Bind fresh frame to slot 1
             GL.ActiveTexture(TextureUnit.Texture1);
             GL.BindTexture(TextureTarget.Texture2D, newFrameTex);
             GL.Uniform1(_newFrameLocation, 1);
 
-            // Set decay rate and resolution
-            GL.Uniform1(_decayRateLocation, _settings.DecayRate);
             GL.Uniform2(_resolutionLocation, new Vector2(width, height));
+            GL.Uniform1(_decayRateLocation, _settings.DecayRate);
 
-            // Draw full quad
-            GL.BindVertexArray(_vao);
+            GL.BindVertexArray(_fullscreenQuadVao);
             GL.DrawArrays(PrimitiveType.Triangles, 0, 6);
             GL.BindVertexArray(0);
 
             GL.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
 
-            // ⚡ Now the decay buffer (_texture) holds the blended frame
             return _texture;
         }
     }
