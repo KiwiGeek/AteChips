@@ -1,4 +1,5 @@
 ﻿using System;
+using AteChips.Host.Video.EffectSettings;
 using OpenTK.Graphics.OpenGL4;
 
 namespace AteChips.Host.Video.Shaders;
@@ -7,22 +8,19 @@ public class PhosphorDecay : IShaderEffect
 {
 
     private readonly int _fullscreenQuadVao;
-    private readonly Func<bool> _isEnabled;
-    private readonly Func<float> _decayRate;
 
     private int _textureA, _textureB;                       // two history textures
     private int _framebufferObjectA, _framebufferObjectB;   // their FBOs
     private bool _useA = true;                              // which one will receive next frame
 
-    public bool Enabled => _isEnabled();
     private readonly int _shader;
+    private PhosphorDecaySettings _settings;
 
-    public PhosphorDecay(int fullscreenQuadVao, Func<bool> isEnabled, Func<float> decayRate)
+    public PhosphorDecay(int fullscreenQuadVao, PhosphorDecaySettings settings)
     {
         _shader = CreateShaderProgram();
         _fullscreenQuadVao = fullscreenQuadVao;
-        _isEnabled = isEnabled;
-        _decayRate = decayRate;
+        _settings = settings;
     }
 
     // --------------------------------------------------------------------
@@ -30,7 +28,7 @@ public class PhosphorDecay : IShaderEffect
     // --------------------------------------------------------------------
     public int Apply(int newFrameTex, int width, int height)
     {
-        if (!Enabled) { return newFrameTex; }
+        if (!_settings.IsEnabled) { return newFrameTex; }
 
         EnsureHistoryTexture(width, height);
 
@@ -52,7 +50,7 @@ public class PhosphorDecay : IShaderEffect
         GL.BindTexture(TextureTarget.Texture2D, newFrameTex);
         GL.Uniform1(GL.GetUniformLocation(_shader, "NewFrame"), 1);
 
-        GL.Uniform1(GL.GetUniformLocation(_shader, "DecayRate"), _decayRate());
+        GL.Uniform1(GL.GetUniformLocation(_shader, "DecayRate"), _settings.DecayRate);
 
         GL.BindVertexArray(_fullscreenQuadVao);
         GL.DrawArrays(PrimitiveType.Triangles, 0, 6);

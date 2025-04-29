@@ -1,4 +1,5 @@
 ﻿using System.Text.Json.Serialization;
+using AteChips.Host.Video.EffectSettings;
 
 namespace AteChips.Host.Video;
 
@@ -23,8 +24,10 @@ public record VideoSettings
     public bool FullScreen { get; set; } = false;
     public PresetPhosphorColor? PhosphorColorType { get; set; } = PresetPhosphorColor.Amber;
     public PhosphorColor? CustomPhosphorColor { get; set; }
-    public bool PhosphorDecayShader { get; set; } = false;
-    public float DecayRate { get; set; } = 0.8f;
+    
+    public PhosphorDecaySettings PhosphorDecaySettings { get; set; } = new();
+
+    public ScanlineSettings ScanlineShaderSettings { get; set; } = new();
 
     [JsonIgnore]
     public PhosphorColor RenderPhosphorColor =>

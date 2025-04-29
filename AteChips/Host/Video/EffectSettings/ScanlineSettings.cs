@@ -1,10 +1,11 @@
 ﻿namespace AteChips.Host.Video.EffectSettings;
 public class ScanlineSettings
 {
-    public float ScanlineIntensity = 0.4f;
-    public float ScanlineSharpness = 3.0f;
-    public float BleedAmount = 0.2f;
-    public float FlickerStrength = 0.05f;
-    public float MaskStrength = 0.1f;
-    public float SlotSharpness = 6.0f;
+    public float Intensity { get; set; } = 1.0f;
+    public float Sharpness { get; set; } = 0.8f;
+    public float BleedAmount { get; set; } = 0.2f;
+    public float FlickerStrength { get; set; } = 0.05f;
+    public float MaskStrength { get; set; } = 0.0f;
+    public float SlotSharpness { get; set; } = 0.8f;
+    public bool IsEnabled { get; set; } = true;
 }

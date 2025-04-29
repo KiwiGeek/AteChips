@@ -17,10 +17,7 @@ public static class ShaderPipeline
 
         foreach (IShaderEffect effect in Effects)
         {
-            if (effect.Enabled)
-            {
-                currentTexture = effect.Apply(currentTexture, width, height);
-            }
+            currentTexture = effect.Apply(currentTexture, width, height);
         }
 
         return currentTexture;
