@@ -155,7 +155,8 @@ partial class Display : IVisualizable, IDrawable, ISettingsChangedNotifier
         GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)TextureMagFilter.Nearest);
 
         // Add it to the pipeline
-        ShaderPipeline.AddEffect(new PhosphorDecay(_vao, () => _videoSettings.PhosphorDecayShader, () => _videoSettings.DecayRate));
+        ShaderPipeline.AddEffect(new PhosphorDecay(_vao, _videoSettings.PhosphorDecaySettings));
+        ShaderPipeline.AddEffect(new Scanlines(_vao, _videoSettings.ScanlineShaderSettings));
     }
 
     /// <summary>
@@ -252,8 +253,8 @@ partial class Display : IVisualizable, IDrawable, ISettingsChangedNotifier
 
         // ── 2. pass through the shader-pipeline (may apply phosphor decay) ────
         int finalTexture = ShaderPipeline.Apply(_textureNewFrame,
-            surface.Width,
-            surface.Height);
+            width,
+            height);
 
         // ── 3. draw that final texture to the window framebuffer ──────────────
         GL.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
@@ -304,7 +305,6 @@ partial class Display : IVisualizable, IDrawable, ISettingsChangedNotifier
 
     private double _lastGameTime;
     private double _lastRenderTime;
-    private readonly double _lastDrawTime = 0;
     private double _messagePumpAccumulator;
 
     /// <summary>

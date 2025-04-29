@@ -46,6 +46,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
+		<Folder Include="Host.Visuals\" />
 		<Folder Include="Shared\Utilities\" />
 	</ItemGroup>
 
