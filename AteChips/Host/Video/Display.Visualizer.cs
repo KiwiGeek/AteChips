@@ -35,6 +35,7 @@ public partial class Display
         PhosphorDecay();
         CrtScanLines();
         Bloom();
+        Curvature();
         
         //ImGui.Checkbox("Curvature", ref _postProcessor.EnableCurvature);
         //if (_postProcessor.EnableCurvature &&
@@ -247,6 +248,52 @@ public partial class Display
 
     }
 
+    void Curvature()
+    {
+        ImGuiWidgets.Checkbox("CRT Curvature",
+            () => _videoSettings.CurvatureSettings.IsEnabled,
+            value =>
+            {
+                _videoSettings.CurvatureSettings.IsEnabled = value;
+                SettingsChanged?.Invoke();
+            });
+
+        if (_videoSettings.CurvatureSettings.IsEnabled)
+        {
+
+            ImGuiWidgets.SliderFloat("Horizontal Curve (X)",
+                () => _videoSettings.CurvatureSettings.CurvatureX,
+                value =>
+                {
+                    _videoSettings.CurvatureSettings.CurvatureX = value;
+                    SettingsChanged?.Invoke();
+                }, 0.0f, 0.5f);
+
+            ImGuiWidgets.SliderFloat("Vertical Curve (Y)",
+                () => _videoSettings.CurvatureSettings.CurvatureY,
+                value =>
+                {
+                    _videoSettings.CurvatureSettings.CurvatureY = value;
+                    SettingsChanged?.Invoke();
+                }, 0.0f, 0.5f);
+            ImGuiWidgets.SliderFloat("Horizontal Warp (X)",
+                () => _videoSettings.CurvatureSettings.WarpX,
+                value =>
+                {
+                    _videoSettings.CurvatureSettings.WarpX = value;
+                    SettingsChanged?.Invoke();
+                }, -0.2f, 0.2f);
+
+            ImGuiWidgets.SliderFloat("Vertical Warp (Y)",
+                () => _videoSettings.CurvatureSettings.WarpY,
+                value =>
+                {
+                    _videoSettings.CurvatureSettings.WarpY = value;
+                    SettingsChanged?.Invoke();
+                }, -0.2f, 0.2f);
+        }
+
+    }
 
 
 }
