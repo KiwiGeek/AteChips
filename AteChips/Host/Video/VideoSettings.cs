@@ -31,6 +31,8 @@ public record VideoSettings
 
     public BloomSettings BloomSettings { get; set; } = new();
 
+    public CurvatureSettings CurvatureSettings { get; set; } = new();
+
     [JsonIgnore]
     public PhosphorColor RenderPhosphorColor =>
         PhosphorColorType switch
